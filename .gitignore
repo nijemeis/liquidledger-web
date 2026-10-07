@@ -1,0 +1,11 @@
+node_modules
+.next
+.env
+.env.local
+*.log
+.DS_Store
+/test-results
+/playwright-report
+/coverage
+next-env.d.ts
+/uploads

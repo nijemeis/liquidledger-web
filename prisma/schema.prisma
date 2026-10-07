@@ -1,0 +1,1017 @@
+// Liquid Ledger data model.
+//
+// Tenancy: Platform → Client (tenant, billing) → Administration (one legal
+// entity's books). Every bookkeeping table carries `administration_id` and is
+// protected by Postgres row-level security (see the `rls` migration). Platform
+// tables (clients, users, sessions, audit) are not tenant-scoped.
+//
+// Money is stored as integer cents (`Int`, suffix `Cents`) with a currency code.
+// Never use floats for money.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Platform: clients, administrations, users, auth
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Plan {
+  STARTER
+  BUSINESS
+  PRO
+  ENTERPRISE
+}
+
+enum ClientStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+}
+
+model Client {
+  id                    String       @id @default(cuid())
+  name                  String
+  country               String // ISO 3166-1 alpha-2
+  vatNumber             String?      @map("vat_number")
+  plan                  Plan         @default(BUSINESS)
+  status                ClientStatus @default(TRIAL)
+  trialEndsAt           DateTime?    @map("trial_ends_at")
+  modules               String[]     @default([])
+  dataRegion            String       @default("eu-central-1") @map("data_region")
+  sessionTimeoutMinutes Int?         @map("session_timeout_minutes")
+  lastActiveAt          DateTime?    @map("last_active_at")
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  administrations      Administration[]
+  supportSessions      SupportSession[]
+  subscriptionInvoices SubscriptionInvoice[]
+
+  @@map("clients")
+}
+
+enum VatPeriod {
+  MONTHLY
+  QUARTERLY
+}
+
+model Administration {
+  id               String    @id @default(cuid())
+  clientId         String    @map("client_id")
+  legalName        String    @map("legal_name")
+  country          String
+  baseCurrency     String    @default("EUR") @map("base_currency")
+  chartTemplate    String    @default("NL-RGS") @map("chart_template")
+  ledgerLanguage   String    @default("nl") @map("ledger_language") // language of ledger account names
+  fiscalYearStart  Int       @default(1) @map("fiscal_year_start") // month 1-12
+  vatPeriod        VatPeriod @default(QUARTERLY) @map("vat_period")
+  vatNumber        String?   @map("vat_number")
+  cocNumber        String?   @map("coc_number")
+  exciseLicenceNo  String?   @map("excise_licence_no")
+  exciseAuthority  String?   @map("excise_authority")
+  addressLine      String?   @map("address_line")
+  postcode         String?
+  city             String?
+  email            String?
+  iban             String?
+  invoicePrefix    String    @default("INV") @map("invoice_prefix")
+  lockedThrough    DateTime? @map("locked_through") // books closed up to and including this date
+  createdAt        DateTime  @default(now()) @map("created_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+
+  @@index([clientId])
+  @@map("administrations")
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+model User {
+  id                  String     @id @default(cuid())
+  email               String     @unique
+  name                String
+  locale              String     @default("en")
+  passwordHash        String?    @map("password_hash")
+  status              UserStatus @default(INVITED)
+  failedAttempts      Int        @default(0) @map("failed_attempts")
+  lockedUntil         DateTime?  @map("locked_until")
+  lockReason          String?    @map("lock_reason")
+  phone               String?
+  smsEnabled          Boolean    @default(false) @map("sms_enabled")
+  totpSecretEnc       String?    @map("totp_secret_enc")
+  totpEnabledAt       DateTime?  @map("totp_enabled_at")
+  totpLastStep        Int?       @map("totp_last_step") // replay protection
+  lastSignInAt        DateTime?  @map("last_sign_in_at")
+  lastAdministrationId String?   @map("last_administration_id")
+  passwordChangedAt   DateTime?  @map("password_changed_at")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  memberships   Membership[]
+  passkeys      Passkey[]
+  recoveryCodes RecoveryCode[]
+  sessions      Session[]
+  devices       UserDevice[]
+  emailTokens   EmailToken[]
+
+  @@map("users")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  BOOKKEEPER
+  WAREHOUSE
+  ACCOUNTANT
+  READ_ONLY
+}
+
+model Membership {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  administrationId String   @map("administration_id")
+  role             Role
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  administration Administration @relation(fields: [administrationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, administrationId])
+  @@index([administrationId])
+  @@map("memberships")
+}
+
+enum StaffRole {
+  SUPER_ADMIN
+  SUPPORT
+  FINANCE
+}
+
+model StaffUser {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  name           String
+  role           StaffRole
+  passwordHash   String?    @map("password_hash")
+  status         UserStatus @default(INVITED)
+  failedAttempts Int        @default(0) @map("failed_attempts")
+  lockedUntil    DateTime?  @map("locked_until")
+  lastSignInAt   DateTime?  @map("last_sign_in_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+
+  passkeys        Passkey[]
+  sessions        Session[]
+  supportSessions SupportSession[]
+
+  @@map("staff_users")
+}
+
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       String?   @map("user_id")
+  staffId      String?   @map("staff_id")
+  credentialId String    @unique @map("credential_id") // base64url
+  publicKey    Bytes     @map("public_key")
+  counter      BigInt    @default(0)
+  transports   String[]  @default([])
+  deviceType   String?   @map("device_type")
+  backedUp     Boolean   @default(false) @map("backed_up")
+  name         String    @default("Passkey")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  lastUsedAt   DateTime? @map("last_used_at")
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staff StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([staffId])
+  @@map("passkeys")
+}
+
+model RecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recovery_codes")
+}
+
+enum SessionKind {
+  USER
+  STAFF
+}
+
+model Session {
+  id               String      @id @default(cuid())
+  kind             SessionKind
+  tokenHash        String      @unique @map("token_hash")
+  userId           String?     @map("user_id")
+  staffId          String?     @map("staff_id")
+  administrationId String?     @map("administration_id")
+  supportSessionId String?     @map("support_session_id") // staff viewing a client app
+  authMethod       String      @map("auth_method") // e.g. "password+totp", "passkey"
+  ip               String?
+  userAgent        String?     @map("user_agent")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  lastSeenAt       DateTime    @default(now()) @map("last_seen_at")
+  idleTimeoutMin   Int         @default(30) @map("idle_timeout_min")
+  expiresAt        DateTime    @map("expires_at") // absolute lifetime
+  revokedAt        DateTime?   @map("revoked_at")
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  staff StaffUser? @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([staffId])
+  @@map("sessions")
+}
+
+// A half-finished sign-in: password checked, second factor (or enrolment) pending.
+model AuthChallenge {
+  id         String      @id @default(cuid())
+  kind       SessionKind
+  tokenHash  String      @unique @map("token_hash")
+  userId     String?     @map("user_id")
+  staffId    String?     @map("staff_id")
+  stage      String // "mfa" | "enroll" | "passkey" | "staff_passkey" | "staff_enroll"
+  webauthn   String?     // pending WebAuthn challenge
+  smsCodeHash String?    @map("sms_code_hash")
+  smsSentAt  DateTime?   @map("sms_sent_at")
+  data       Json?
+  attempts   Int         @default(0)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  expiresAt  DateTime    @map("expires_at")
+
+  @@map("auth_challenges")
+}
+
+// Device cookie bound to one user. Used for "trust this device for 30 days" and
+// for new-device sign-in emails.
+model UserDevice {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash")
+  userAgent    String?   @map("user_agent")
+  ip           String?
+  trustedUntil DateTime? @map("trusted_until")
+  firstSeenAt  DateTime  @default(now()) @map("first_seen_at")
+  lastSeenAt   DateTime  @default(now()) @map("last_seen_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_devices")
+}
+
+enum EmailTokenPurpose {
+  INVITE
+  RESET_PASSWORD
+  LOCK_ACCOUNT
+  STAFF_SETUP
+}
+
+model EmailToken {
+  id        String            @id @default(cuid())
+  userId    String?           @map("user_id")
+  staffId   String?           @map("staff_id")
+  purpose   EmailTokenPurpose
+  tokenHash String            @unique @map("token_hash")
+  data      Json?
+  expiresAt DateTime          @map("expires_at")
+  usedAt    DateTime?         @map("used_at")
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_tokens")
+}
+
+// Fixed-window counters for throttling sign-in attempts per IP / per email.
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime @map("window_start")
+
+  @@map("rate_limits")
+}
+
+model SupportSession {
+  id        String    @id @default(cuid())
+  staffId   String    @map("staff_id")
+  clientId  String    @map("client_id")
+  reason    String
+  startedAt DateTime  @default(now()) @map("started_at")
+  expiresAt DateTime  @map("expires_at")
+  endedAt   DateTime? @map("ended_at")
+
+  staff  StaffUser @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  client Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("support_sessions")
+}
+
+enum ActorType {
+  USER
+  STAFF
+  SYSTEM
+}
+
+model AuditEvent {
+  id               String    @id @default(cuid())
+  at               DateTime  @default(now())
+  actorType        ActorType @map("actor_type")
+  actorId          String?   @map("actor_id")
+  actorLabel       String    @map("actor_label")
+  clientId         String?   @map("client_id")
+  administrationId String?   @map("administration_id")
+  action           String // machine key, e.g. "auth.sign_in"
+  summary          String // human readable
+  targetType       String?   @map("target_type")
+  targetId         String?   @map("target_id")
+  before           Json?
+  after            Json?
+  ip               String?
+  userAgent        String?   @map("user_agent")
+
+  @@index([at])
+  @@index([clientId, at])
+  @@index([administrationId, at])
+  @@map("audit_events")
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedBy String?  @map("updated_by")
+
+  @@map("platform_settings")
+}
+
+enum SubscriptionInvoiceStatus {
+  PAID
+  OPEN
+  FAILED
+  VOID
+}
+
+model SubscriptionInvoice {
+  id          String                    @id @default(cuid())
+  clientId    String                    @map("client_id")
+  number      String                    @unique
+  plan        Plan
+  periodStart DateTime                  @map("period_start")
+  periodEnd   DateTime                  @map("period_end")
+  amountCents Int                       @map("amount_cents")
+  currency    String                    @default("EUR")
+  status      SubscriptionInvoiceStatus @default(OPEN)
+  issuedAt    DateTime                  @default(now()) @map("issued_at")
+  paidAt      DateTime?                 @map("paid_at")
+  providerRef String?                   @map("provider_ref")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@map("subscription_invoices")
+}
+
+enum ProductCategory {
+  WINE
+  BEER
+  SPIRITS
+  FORTIFIED
+  WATER
+  SOFT
+}
+
+enum ExciseBasis {
+  HL_PRODUCT // per hectolitre of product (wine, intermediate)
+  HL_PER_ABV // per hectolitre per % vol (beer NL)
+  HL_PER_PLATO // per hectolitre per degree Plato (beer in some countries)
+  HL_PURE_ALCOHOL // per hectolitre of pure alcohol (spirits)
+  NONE
+}
+
+// Maintained by platform staff. Versioned by valid_from; never edited in place
+// once in use — add a new row with a later valid_from instead.
+model ExciseRate {
+  id        String          @id @default(cuid())
+  country   String
+  category  ProductCategory
+  basis     ExciseBasis
+  rateCents Int             @map("rate_cents") // per basis unit, in cents
+  validFrom DateTime        @map("valid_from") @db.Date
+  note      String?
+  createdAt DateTime        @default(now()) @map("created_at")
+  createdBy String?         @map("created_by")
+
+  @@index([country, category, validFrom])
+  @@map("excise_rates")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tenant data (row-level security on administration_id)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  COST
+}
+
+model LedgerAccount {
+  id               String      @id @default(cuid())
+  administrationId String      @map("administration_id")
+  code             String
+  nameNl           String      @map("name_nl")
+  nameEn           String      @map("name_en")
+  type             AccountType
+  rgsCode          String?     @map("rgs_code")
+  system           Boolean     @default(false) // used by the posting engine; cannot be deleted
+  active           Boolean     @default(true)
+
+  @@unique([administrationId, code])
+  @@map("ledger_accounts")
+}
+
+enum RelationKind {
+  CUSTOMER
+  SUPPLIER
+  BOTH
+}
+
+enum TaxRegime {
+  DOMESTIC
+  EU_B2B
+  EXPORT
+}
+
+model Relation {
+  id                String       @id @default(cuid())
+  administrationId  String       @map("administration_id")
+  kind              RelationKind
+  name              String
+  typeLabel         String?      @map("type_label") // "Hotel", "Winery"…
+  country           String
+  city              String?
+  addressLine       String?      @map("address_line")
+  postcode          String?
+  email             String?
+  phone             String?
+  vatNumber         String?      @map("vat_number")
+  viesValid         Boolean?     @map("vies_valid")
+  viesCheckedAt     DateTime?    @map("vies_checked_at")
+  viesName          String?      @map("vies_name")
+  exciseStatus      String?      @map("excise_status")
+  exciseNumber      String?      @map("excise_number")
+  paymentTermsDays  Int          @default(14) @map("payment_terms_days")
+  defaultPriceList  String?      @map("default_price_list")
+  taxRegimeOverride TaxRegime?   @map("tax_regime_override")
+  iban              String?
+  notes             String?
+  archivedAt        DateTime?    @map("archived_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  @@index([administrationId, kind])
+  @@map("relations")
+}
+
+model Product {
+  id               String          @id @default(cuid())
+  administrationId String          @map("administration_id")
+  sku              String
+  name             String
+  producer         String?
+  region           String?
+  originCountry    String?         @map("origin_country")
+  category         ProductCategory
+  volumeMl         Int             @map("volume_ml")
+  abvBp            Int             @default(0) @map("abv_bp") // alcohol % × 100 (13.5% = 1350)
+  platoTenths      Int?            @map("plato_tenths") // °P × 10
+  vintage          String?
+  unitsPerCase     Int             @default(6) @map("units_per_case")
+  casesPerPallet   Int?            @map("cases_per_pallet")
+  ean              String?
+  cnCode           String?         @map("cn_code")
+  emcsCode         String?         @map("emcs_code")
+  depositCents     Int             @default(0) @map("deposit_cents")
+  reorderLevel     Int?            @map("reorder_level")
+  costCents        Int             @default(0) @map("cost_cents") // landed cost per unit (moving average)
+  archivedAt       DateTime?       @map("archived_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  prices ProductPrice[]
+
+  @@unique([administrationId, sku])
+  @@map("products")
+}
+
+model ProductPrice {
+  id               String   @id @default(cuid())
+  administrationId String   @map("administration_id")
+  productId        String   @map("product_id")
+  list             String // "Horeca" | "Wholesale" | "Export" | custom
+  unitPriceCents   Int      @map("unit_price_cents")
+  currency         String   @default("EUR")
+  validFrom        DateTime @default(now()) @map("valid_from")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_prices")
+}
+
+enum WarehouseKind {
+  BONDED
+  DUTY_PAID
+  IN_TRANSIT
+}
+
+model Warehouse {
+  id                String        @id @default(cuid())
+  administrationId  String        @map("administration_id")
+  name              String
+  kind              WarehouseKind
+  city              String?
+  exciseWarehouseNo String?       @map("excise_warehouse_no")
+  archivedAt        DateTime?     @map("archived_at")
+
+  @@map("warehouses")
+}
+
+enum StockReason {
+  OPENING
+  PURCHASE
+  SALE
+  TRANSFER
+  RELEASE_FOR_CONSUMPTION
+  SAMPLE
+  LOSS
+  COUNT
+}
+
+model StockMovement {
+  id               String      @id @default(cuid())
+  administrationId String      @map("administration_id")
+  productId        String      @map("product_id")
+  fromWarehouseId  String?     @map("from_warehouse_id")
+  toWarehouseId    String?     @map("to_warehouse_id")
+  qty              Int // units, always positive; direction is given by from/to
+  reason           StockReason
+  unitCostCents    Int         @default(0) @map("unit_cost_cents")
+  exciseReleased   Boolean     @default(false) @map("excise_released") // released for consumption → excise due
+  exciseCents      Int         @default(0) @map("excise_cents")
+  documentType     String?     @map("document_type")
+  documentId       String?     @map("document_id")
+  documentRef      String?     @map("document_ref")
+  note             String?
+  at               DateTime    @default(now())
+  createdById      String?     @map("created_by_id")
+
+  @@index([administrationId, productId])
+  @@index([administrationId, at])
+  @@map("stock_movements")
+}
+
+enum SalesInvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  CREDITED
+}
+
+model SalesInvoice {
+  id               String             @id @default(cuid())
+  administrationId String             @map("administration_id")
+  number           String?
+  customerId       String             @map("customer_id")
+  issueDate        DateTime           @map("issue_date") @db.Date
+  dueDate          DateTime           @map("due_date") @db.Date
+  taxRegime        TaxRegime          @map("tax_regime")
+  status           SalesInvoiceStatus @default(DRAFT)
+  currency         String             @default("EUR")
+  warehouseId      String?            @map("warehouse_id")
+  netCents         Int                @default(0) @map("net_cents")
+  exciseCents      Int                @default(0) @map("excise_cents")
+  depositCents     Int                @default(0) @map("deposit_cents")
+  vatCents         Int                @default(0) @map("vat_cents")
+  totalCents       Int                @default(0) @map("total_cents")
+  paidCents        Int                @default(0) @map("paid_cents")
+  reference        String?
+  notes            String?
+  sentAt           DateTime?          @map("sent_at")
+  paidAt           DateTime?          @map("paid_at")
+  lastReminderAt   DateTime?          @map("last_reminder_at")
+  journalEntryId   String?            @map("journal_entry_id")
+  createdById      String?            @map("created_by_id")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  lines SalesInvoiceLine[]
+
+  @@unique([administrationId, number])
+  @@index([administrationId, status])
+  @@map("sales_invoices")
+}
+
+model SalesInvoiceLine {
+  id               String  @id @default(cuid())
+  administrationId String  @map("administration_id")
+  invoiceId        String  @map("invoice_id")
+  productId        String? @map("product_id")
+  description      String
+  qtyUnits         Int     @map("qty_units")
+  unitPriceCents   Int     @map("unit_price_cents")
+  netCents         Int     @map("net_cents")
+  exciseCents      Int     @default(0) @map("excise_cents")
+  exciseFormula    String? @map("excise_formula")
+  depositCents     Int     @default(0) @map("deposit_cents")
+  vatRateBp        Int     @default(0) @map("vat_rate_bp") // 21% = 2100
+  vatCode          String  @map("vat_code")
+  vatCents         Int     @default(0) @map("vat_cents")
+  sort             Int     @default(0)
+
+  invoice SalesInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("sales_invoice_lines")
+}
+
+enum PurchaseInvoiceStatus {
+  TO_APPROVE
+  BOOKED
+  PAID
+}
+
+enum PurchaseVatTreatment {
+  DOMESTIC
+  EU_ACQUISITION
+  IMPORT
+  EU_SERVICES
+  NONE
+}
+
+model PurchaseInvoice {
+  id                 String                @id @default(cuid())
+  administrationId   String                @map("administration_id")
+  supplierId         String?               @map("supplier_id")
+  supplierName       String                @map("supplier_name")
+  supplierCountry    String?               @map("supplier_country")
+  number             String
+  issueDate          DateTime              @map("issue_date") @db.Date
+  dueDate            DateTime?             @map("due_date") @db.Date
+  currency           String                @default("EUR")
+  fxRate             Decimal               @default(1) @map("fx_rate") @db.Decimal(18, 8) // 1 unit of currency in EUR
+  fxDate             DateTime?             @map("fx_date") @db.Date
+  totalSourceCents   Int                   @default(0) @map("total_source_cents")
+  netCents           Int                   @default(0) @map("net_cents")
+  vatCents           Int                   @default(0) @map("vat_cents")
+  totalCents         Int                   @default(0) @map("total_cents") // in base currency
+  paidCents          Int                   @default(0) @map("paid_cents")
+  vatTreatment       PurchaseVatTreatment  @default(DOMESTIC) @map("vat_treatment")
+  status             PurchaseInvoiceStatus @default(TO_APPROVE)
+  warehouseId        String?               @map("warehouse_id")
+  shipmentId         String?               @map("shipment_id")
+  orderRef           String?               @map("order_ref")
+  documentId         String?               @map("document_id")
+  ocrConfidence      Int?                  @map("ocr_confidence") // 0-100
+  warning            String?
+  paymentScheduledAt DateTime?             @map("payment_scheduled_at")
+  bookedAt           DateTime?             @map("booked_at")
+  journalEntryId     String?               @map("journal_entry_id")
+  createdAt          DateTime              @default(now()) @map("created_at")
+
+  lines PurchaseInvoiceLine[]
+
+  @@index([administrationId, status])
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceLine {
+  id                String  @id @default(cuid())
+  administrationId  String  @map("administration_id")
+  invoiceId         String  @map("invoice_id")
+  description       String
+  productId         String? @map("product_id")
+  accountCode       String  @map("account_code")
+  qty               Int     @default(1)
+  unitPriceSrcCents Int     @map("unit_price_src_cents") // in invoice currency
+  amountSrcCents    Int     @map("amount_src_cents")
+  amountCents       Int     @map("amount_cents") // in base currency
+  vatRateBp         Int     @default(0) @map("vat_rate_bp")
+  vatCents          Int     @default(0) @map("vat_cents")
+  sort              Int     @default(0)
+
+  invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("purchase_invoice_lines")
+}
+
+enum DocumentStatus {
+  UPLOADED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+model Document {
+  id               String         @id @default(cuid())
+  administrationId String         @map("administration_id")
+  kind             String // "purchase_invoice" | "receipt" | "customs" | "other"
+  filename         String
+  mimeType         String         @map("mime_type")
+  size             Int
+  sha256           String
+  storage          String         @default("db") // "db" | "s3"
+  storageKey       String?        @map("storage_key")
+  data             Bytes?
+  status           DocumentStatus @default(UPLOADED)
+  extraction       Json?
+  error            String?
+  uploadedById     String?        @map("uploaded_by_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  @@index([administrationId, createdAt])
+  @@map("documents")
+}
+
+enum PaidBy {
+  CARD
+  BANK
+  OWN
+}
+
+enum ReceiptStatus {
+  UNSORTED
+  SUGGESTED
+  BOOKED
+}
+
+model Receipt {
+  id               String        @id @default(cuid())
+  administrationId String        @map("administration_id")
+  date             DateTime      @db.Date
+  supplier         String
+  description      String
+  amountCents      Int           @map("amount_cents") // gross, incl. VAT
+  currency         String        @default("EUR")
+  categoryKey      String?       @map("category_key")
+  vatOverride      String?       @map("vat_override") // e.g. "EU service · reverse charge"
+  paidBy           PaidBy        @default(CARD) @map("paid_by")
+  employeeName     String?       @map("employee_name")
+  status           ReceiptStatus @default(UNSORTED)
+  suggestionReason String?       @map("suggestion_reason")
+  ruleId           String?       @map("rule_id")
+  documentId       String?       @map("document_id")
+  journalEntryId   String?       @map("journal_entry_id")
+  claimPaidAt      DateTime?     @map("claim_paid_at")
+  payroll          Json? // imported payroll split: [{accountCode, debitCents, creditCents}]
+  bookedAt         DateTime?     @map("booked_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  @@index([administrationId, status])
+  @@map("receipts")
+}
+
+model BookingRule {
+  id               String   @id @default(cuid())
+  administrationId String   @map("administration_id")
+  matchType        String   @map("match_type") // "supplier" | "iban" | "description"
+  pattern          String
+  categoryKey      String?  @map("category_key")
+  accountCode      String?  @map("account_code")
+  vatRateBp        Int?     @map("vat_rate_bp")
+  timesUsed        Int      @default(0) @map("times_used")
+  createdById      String?  @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("booking_rules")
+}
+
+model BankAccount {
+  id                  String    @id @default(cuid())
+  administrationId    String    @map("administration_id")
+  name                String
+  iban                String?
+  currency            String    @default("EUR")
+  accountCode         String    @map("account_code")
+  provider            String    @default("manual") // "manual" | "camt" | aggregator name
+  openingBalanceCents Int       @default(0) @map("opening_balance_cents")
+  lastSyncedAt        DateTime? @map("last_synced_at")
+  archivedAt          DateTime? @map("archived_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  transactions BankTransaction[]
+
+  @@map("bank_accounts")
+}
+
+enum BankTxStatus {
+  UNRECONCILED
+  RECONCILED
+}
+
+model BankTransaction {
+  id               String       @id @default(cuid())
+  administrationId String       @map("administration_id")
+  bankAccountId    String       @map("bank_account_id")
+  date             DateTime     @db.Date
+  counterparty     String
+  counterpartyIban String?      @map("counterparty_iban")
+  description      String
+  amountCents      Int          @map("amount_cents") // + incoming, − outgoing (account currency)
+  status           BankTxStatus @default(UNRECONCILED)
+  matchType        String?      @map("match_type")
+  matchId          String?      @map("match_id")
+  matchLabel       String?      @map("match_label")
+  journalEntryId   String?      @map("journal_entry_id")
+  importHash       String       @map("import_hash")
+  reconciledAt     DateTime?    @map("reconciled_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+
+  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([bankAccountId, importHash])
+  @@index([administrationId, status])
+  @@map("bank_transactions")
+}
+
+enum ShipmentDirection {
+  IMPORT
+  EXPORT
+  EU
+  DOMESTIC
+}
+
+enum ShipmentStage {
+  BOOKED
+  IN_TRANSIT
+  AT_CUSTOMS
+  ARRIVED
+}
+
+model Shipment {
+  id               String            @id @default(cuid())
+  administrationId String            @map("administration_id")
+  ref              String
+  direction        ShipmentDirection
+  origin           String
+  destination      String
+  mode             String
+  goods            String
+  eta              DateTime?         @db.Date
+  stage            ShipmentStage     @default(BOOKED)
+  stageNote        String?           @map("stage_note")
+  blocked          Boolean           @default(false)
+  blockReason      String?           @map("block_reason")
+  relationId       String?           @map("relation_id")
+  notes            String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+
+  @@unique([administrationId, ref])
+  @@map("shipments")
+}
+
+enum CustomsDocType {
+  IMPORT_DECLARATION
+  EXPORT_DECLARATION
+  E_AD
+  T1
+  OTHER
+}
+
+enum CustomsDocStatus {
+  DRAFT
+  AWAITING
+  ACCEPTED
+  RELEASED
+  MISSING
+  REJECTED
+}
+
+model CustomsDocument {
+  id               String           @id @default(cuid())
+  administrationId String           @map("administration_id")
+  type             CustomsDocType
+  reference        String?
+  shipmentId       String?          @map("shipment_id")
+  salesInvoiceId   String?          @map("sales_invoice_id")
+  status           CustomsDocStatus @default(DRAFT)
+  documentId       String?          @map("document_id")
+  notes            String?
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  @@map("customs_documents")
+}
+
+enum JournalSource {
+  OPENING
+  SALES
+  PURCHASE
+  BANK
+  RECEIPT
+  STOCK
+  EXCISE
+  MANUAL
+  PAYROLL_IMPORT
+}
+
+model JournalEntry {
+  id               String        @id @default(cuid())
+  administrationId String        @map("administration_id")
+  number           Int
+  date             DateTime      @db.Date
+  title            String
+  source           JournalSource
+  sourceId         String?       @map("source_id")
+  reversalOfId     String?       @map("reversal_of_id")
+  createdById      String?       @map("created_by_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  lines JournalLine[]
+
+  @@unique([administrationId, number])
+  @@index([administrationId, date])
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id               String  @id @default(cuid())
+  administrationId String  @map("administration_id")
+  entryId          String  @map("entry_id")
+  accountCode      String  @map("account_code")
+  debitCents       Int     @default(0) @map("debit_cents")
+  creditCents      Int     @default(0) @map("credit_cents")
+  vatCode          String? @map("vat_code")
+  vatBaseCents     Int?    @map("vat_base_cents")
+  relationId       String? @map("relation_id")
+  description      String?
+
+  entry JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([administrationId, accountCode])
+  @@index([entryId])
+  @@map("journal_lines")
+}
+
+enum TaxReturnType {
+  VAT
+  EXCISE
+  ICP
+}
+
+enum TaxReturnStatus {
+  DRAFT
+  READY
+  FILED
+}
+
+model TaxReturn {
+  id               String          @id @default(cuid())
+  administrationId String          @map("administration_id")
+  type             TaxReturnType
+  periodStart      DateTime        @map("period_start") @db.Date
+  periodEnd        DateTime        @map("period_end") @db.Date
+  boxes            Json
+  totalCents       Int             @map("total_cents")
+  status           TaxReturnStatus @default(DRAFT)
+  filedRef         String?         @map("filed_ref")
+  filedAt          DateTime?       @map("filed_at")
+  filedById        String?         @map("filed_by_id")
+
+  @@unique([administrationId, type, periodStart])
+  @@map("tax_returns")
+}
+
+model Sequence {
+  administrationId String @map("administration_id")
+  name             String
+  next             Int    @default(1)
+
+  @@id([administrationId, name])
+  @@map("sequences")
+}
