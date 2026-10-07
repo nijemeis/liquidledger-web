@@ -49,41 +49,75 @@ Financial data, so the defaults are strict:
 - **Least privilege**: the role × permission matrix from the handoff (`src/lib/permissions.ts`) is enforced on
   every server action, not just hidden in the UI.
 
-## Run it locally
+## Run it on your own computer
 
-Requirements: Node 22, PostgreSQL 16.
+This takes about 10 minutes the first time. You need three programs:
+
+| Program | Why | Get it |
+|---|---|---|
+| **Git** | download the code | Mac: run `git --version` in Terminal — macOS offers to install it if missing |
+| **Node.js 22** | runs the app | https://nodejs.org (the "LTS" installer) or `brew install node@22` |
+| **Docker Desktop** | runs the database | https://www.docker.com/products/docker-desktop — open it once so it's running |
+
+Then, in Terminal:
 
 ```bash
-# 1. Database: a normal (non-superuser) role that owns its database
-createuser liquidledger --pwprompt --createdb      # password: liquidledger
-createdb -O liquidledger liquidledger
+# 1. Download the code and go into the folder
+git clone https://github.com/nijemeis/liquidledger-web.git
+cd liquidledger-web
 
-# 2. Config
-cp .env.example .env
-#   set APP_ENCRYPTION_KEY: openssl rand -base64 32
-
-# 3. Install, migrate, load the demo company
+# 2. Install the app's libraries (a few minutes the first time)
 npm install
-npx prisma migrate deploy
-npm run db:seed          # prints demo logins, an authenticator secret and staff set-up links
 
-# 4. Run
-npm run dev              # http://localhost:3000
+# 3. Start the database (keeps running in the background)
+docker compose up -d
+
+# 4. Set everything up: config file, database tables, demo company
+npm run setup
+
+# 5. Start the app
+npm run dev
 ```
 
-The seed creates **Vale & Hart Drinks B.V.** with nine months of history booked through the real
-posting engine (purchases, releases for consumption, sales, payments, payroll, tax payments) plus the
-admin console's clients, users and staff. Sign in as `marta@valehart.nl` / `wijnkelder-2026`; add the
-printed authenticator secret to your authenticator app (or a password manager) for the 6-digit code.
-Platform staff (`/admin`) first open their set-up link to choose a password and register a passkey.
+Open **http://localhost:3000** and sign in:
 
-Checks:
+- Email `marta@valehart.nl`, password `wijnkelder-2026`
+- For the 6-digit code, open a **second** Terminal window in the same folder and run `npm run dev:code`.
+  It prints the current code (it changes every 30 seconds). It also prints a setup key you can add to an
+  authenticator app (Google Authenticator, Microsoft Authenticator, 1Password: "enter a setup key") if you
+  prefer using your phone.
+- Other demo users: `joost@valehart.nl` (Warehouse role) and `eva@bakker-accountants.nl` (external accountant),
+  same password; `npm run dev:code -- joost@valehart.nl` for their code.
 
-```bash
-npm run typecheck
-npm test                 # unit + database tests (needs a liquidledger_test database)
-npm run build
-```
+**Platform admin console** (http://localhost:3000/admin): staff sign in with a passkey. `npm run setup` prints a
+set-up link for each staff member — open one, choose a password and register a passkey (on a Mac: Touch ID in
+Chrome or Safari).
+
+**Emails** (password resets, invites, new-device alerts) aren't sent locally; they're printed in the Terminal
+window running `npm run dev`, so copy links from there.
+
+### Day to day
+
+| Task | Command |
+|---|---|
+| Start the app | `docker compose up -d` (if the database isn't running) then `npm run dev` |
+| Stop the app | `Ctrl+C` in its Terminal; `docker compose stop` stops the database |
+| Fresh demo data | `npm run db:seed` (wipes the local database and reloads the demo company) |
+| Current login code | `npm run dev:code` |
+| Get the latest code | `git pull`, then `npm install` and `npx prisma migrate deploy` |
+| Run the checks | `npm run typecheck`, `npm test`, `npm run build` |
+
+### If something goes wrong
+
+- **"Can't reach PostgreSQL"** — Docker Desktop isn't running, or the database hasn't started yet. Open Docker
+  Desktop, run `docker compose up -d`, wait a few seconds, then `npm run setup` again.
+- **Port 5432 already in use** — you already run PostgreSQL yourself (e.g. Homebrew). Either stop it
+  (`brew services stop postgresql@17`) or use it instead of Docker: create a normal user and database
+  (`createuser liquidledger --pwprompt --createdb`, password `liquidledger`; `createdb -O liquidledger liquidledger`)
+  and run `npm run setup`.
+- **"That code isn't right"** — run `npm run dev:code` again and type the code quickly; after five wrong
+  attempts the account locks for 15 minutes (`npm run db:seed` resets everything).
+- **Port 3000 in use** — `npm run dev -- -p 3001` and open http://localhost:3001.
 
 ## Deploy (DigitalOcean App Platform, Frankfurt)
 

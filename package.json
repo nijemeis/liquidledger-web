@@ -14,8 +14,10 @@
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
-    "staff:create": "tsx scripts/create-staff.ts"
+    "db:seed": "tsx --env-file=.env prisma/seed.ts",
+    "staff:create": "tsx --env-file=.env scripts/create-staff.ts",
+    "setup": "node scripts/setup.mjs",
+    "dev:code": "tsx --env-file=.env scripts/dev-code.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.0",
