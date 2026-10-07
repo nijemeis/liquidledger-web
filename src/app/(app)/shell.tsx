@@ -34,6 +34,7 @@ export function Shell({
   readOnly,
   isSupportView,
   banner,
+  adminUrl,
   children,
 }: {
   groups: NavGroup[];
@@ -47,6 +48,7 @@ export function Shell({
   readOnly: boolean;
   isSupportView: boolean;
   banner: { tone: string; text: string; action?: "endSupport" } | null;
+  adminUrl: string;
   children: React.ReactNode;
 }) {
   const { t } = useI18n();
@@ -214,7 +216,7 @@ export function Shell({
       </aside>
 
       <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-        <div className="no-print" style={{ position: "sticky", top: 0, zIndex: 20, display: "flex", alignItems: "center", gap: 10, padding: "12px 24px", background: "rgba(245,246,248,0.92)", backdropFilter: "blur(8px)", borderBottom: "1px solid #e4e7ec" }}>
+        <div className="no-print topbar" style={{ position: "sticky", top: 0, zIndex: 20, display: "flex", alignItems: "center", gap: 10, padding: "12px 24px", background: "rgba(245,246,248,0.92)", backdropFilter: "blur(8px)", borderBottom: "1px solid #e4e7ec" }}>
           <form
             action="/search"
             className="search"
@@ -227,7 +229,7 @@ export function Shell({
           >
             <Icon name="MagnifyingGlass" size={17} />
             <input ref={searchRef} name="q" placeholder={t("common.search")} aria-label={t("common.search_")} />
-            <span style={{ flex: "none", fontSize: 12, padding: "1px 6px", border: "1px solid #e4e7ec", borderRadius: 5 }}>⌘K</span>
+            <span className="hide-sm" style={{ flex: "none", fontSize: 12, padding: "1px 6px", border: "1px solid #e4e7ec", borderRadius: 5 }}>⌘K</span>
           </form>
           <div style={{ flex: "0 1 auto" }} />
           <Dropdown
@@ -266,7 +268,7 @@ export function Shell({
           {!readOnly ? (
             <Link href="/purchases?upload=1" className="btn">
               <Icon name="UploadSimple" size={16} />
-              {t("common.upload")}
+              <span className="hide-sm">{t("common.upload")}</span>
             </Link>
           ) : null}
           {!readOnly ? (
@@ -276,7 +278,7 @@ export function Shell({
               trigger={(_, toggle) => (
                 <button onClick={toggle} className="btn btn-primary">
                   <Icon name="Plus" size={16} />
-                  {t("common.new")}
+                  <span className="hide-sm">{t("common.new")}</span>
                   <Icon name="CaretDown" size={13} />
                 </button>
               )}
@@ -328,7 +330,7 @@ export function Shell({
                     start(async () => {
                       if (isSupportView) await endSupportView();
                       else await signOut();
-                      window.location.href = isSupportView ? "/admin" : "/login";
+                      window.location.href = isSupportView ? adminUrl : "/login";
                     })
                   }
                 >
@@ -344,7 +346,7 @@ export function Shell({
             <Icon name={banner.tone === "brand" ? "Headset" : banner.tone === "warn" ? "Warning" : "Info"} size={17} />
             <span style={{ flex: 1 }}>{banner.text}</span>
             {banner.action === "endSupport" ? (
-              <button className="btn btn-sm" onClick={() => start(async () => { await endSupportView(); window.location.href = "/admin"; })}>
+              <button className="btn btn-sm" onClick={() => start(async () => { await endSupportView(); window.location.href = adminUrl; })}>
                 {t("common.endSupport")}
               </button>
             ) : null}

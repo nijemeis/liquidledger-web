@@ -1,0 +1,72 @@
+# DigitalOcean App Platform spec. Create with:
+#   doctl apps create --spec .do/app.yaml
+# Secrets marked type: SECRET must be filled in the dashboard (or with doctl) — never commit them.
+name: liquidledger
+region: fra            # Frankfurt — keeps client data in the EU (matches the "Data hosted in the EU" promise)
+
+domains:
+  - domain: liquidledger.net
+    type: PRIMARY
+  - domain: www.liquidledger.net
+    type: ALIAS
+  - domain: admin.liquidledger.net
+    type: ALIAS
+
+services:
+  - name: web
+    github:
+      repo: nijemeis/liquidledger-web
+      branch: main
+      deploy_on_push: true
+    dockerfile_path: Dockerfile
+    http_port: 8080
+    instance_size_slug: apps-s-1vcpu-2gb
+    instance_count: 2          # stateless: sessions live in Postgres, so scale horizontally
+    health_check:
+      http_path: /api/health
+    envs:
+      - { key: APP_URL, value: "https://liquidledger.net" }
+      - { key: ADMIN_URL, value: "https://admin.liquidledger.net/admin" }
+      - { key: ADMIN_HOST, value: "admin.liquidledger.net" }
+      - { key: WEBAUTHN_RP_ID, value: "liquidledger.net" }
+      - { key: WEBAUTHN_ORIGINS, value: "https://liquidledger.net,https://www.liquidledger.net,https://admin.liquidledger.net" }
+      - { key: TRUSTED_IP_HEADER, value: "do-connecting-ip" }
+      - { key: MAIL_FROM, value: "Liquid Ledger <no-reply@liquidledger.net>" }
+      # Pooled connection (PgBouncer, transaction mode) for the app; append ?pgbouncer=true&connection_limit=5
+      - { key: DATABASE_URL, scope: RUN_AND_BUILD_TIME, type: SECRET, value: "" }
+      # Direct connection for migrations
+      - { key: DIRECT_URL, scope: RUN_AND_BUILD_TIME, type: SECRET, value: "" }
+      - { key: APP_ENCRYPTION_KEY, scope: RUN_TIME, type: SECRET, value: "" }   # openssl rand -base64 32
+      - { key: SMTP_URL, scope: RUN_TIME, type: SECRET, value: "" }
+      - { key: ANTHROPIC_API_KEY, scope: RUN_TIME, type: SECRET, value: "" }    # optional: document reading
+      - { key: S3_BUCKET, scope: RUN_TIME, value: "" }                           # optional: DO Spaces for documents
+      - { key: S3_ENDPOINT, scope: RUN_TIME, value: "https://fra1.digitaloceanspaces.com" }
+      - { key: S3_REGION, scope: RUN_TIME, value: "fra1" }
+      - { key: S3_ACCESS_KEY_ID, scope: RUN_TIME, type: SECRET, value: "" }
+      - { key: S3_SECRET_ACCESS_KEY, scope: RUN_TIME, type: SECRET, value: "" }
+      - { key: TWILIO_ACCOUNT_SID, scope: RUN_TIME, type: SECRET, value: "" }   # optional: SMS fallback
+      - { key: TWILIO_AUTH_TOKEN, scope: RUN_TIME, type: SECRET, value: "" }
+      - { key: TWILIO_FROM, scope: RUN_TIME, value: "" }
+
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    github:
+      repo: nijemeis/liquidledger-web
+      branch: main
+    dockerfile_path: Dockerfile
+    instance_size_slug: apps-s-1vcpu-1gb
+    run_command: npx prisma migrate deploy
+    envs:
+      - { key: DATABASE_URL, scope: RUN_TIME, type: SECRET, value: "" }
+      - { key: DIRECT_URL, scope: RUN_TIME, type: SECRET, value: "" }
+
+# Managed PostgreSQL 16 in fra1 with daily backups + point-in-time recovery.
+# Create a dedicated, NON-superuser role for the app (e.g. "liquidledger_app") that owns the database;
+# the app refuses to start in production when its role can bypass row-level security.
+databases:
+  - name: db
+    engine: PG
+    version: "16"
+    production: true
+    cluster_name: liquidledger-db

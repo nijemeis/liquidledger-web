@@ -6,6 +6,7 @@ import { I18nProvider } from "@/i18n/client";
 import { ToastProvider } from "@/components/client";
 import { canView, SCREEN_PERMISSION } from "@/lib/permissions";
 import { initials } from "@/lib/format";
+import { env } from "@/lib/env";
 import { Shell, type NavGroup } from "./shell";
 
 export const dynamic = "force-dynamic";
@@ -63,6 +64,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           initialSidebar={sidebarPref === "closed" ? "closed" : sidebarPref === "open" ? "open" : null}
           readOnly={ctx.readOnly}
           isSupportView={ctx.kind === "support"}
+          adminUrl={env.adminUrl}
           banner={
             ctx.kind === "support" && support
               ? { tone: "brand", text: t("common.supportViewing", { client: ctx.administration.client.name, time: fmt.time(support.expiresAt) }), action: "endSupport" }

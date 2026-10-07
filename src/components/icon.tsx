@@ -123,6 +123,10 @@ import {
   QrCodeIcon,
   HashIcon,
   FloppyDiskIcon,
+  KeyboardIcon,
+  LinkBreakIcon,
+  PasswordIcon,
+  PulseIcon,
 } from "@phosphor-icons/react/ssr";
 import type { Icon as PhosphorIcon, IconWeight } from "@phosphor-icons/react";
 
@@ -248,6 +252,10 @@ export const ICONS = {
   QrCode: QrCodeIcon,
   Hash: HashIcon,
   FloppyDisk: FloppyDiskIcon,
+  Keyboard: KeyboardIcon,
+  LinkBreak: LinkBreakIcon,
+  Password: PasswordIcon,
+  Pulse: PulseIcon,
 } satisfies Record<string, PhosphorIcon>;
 
 export type IconName = keyof typeof ICONS;

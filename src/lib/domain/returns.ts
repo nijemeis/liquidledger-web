@@ -112,7 +112,7 @@ export async function exciseReturn(tx: Tx, administrationId: string, p: Period) 
   const per = new Map<string, { units: number; cents: number }>();
   for (const m of moves) {
     const cur = per.get(m.productId) ?? { units: 0, cents: 0 };
-    cur.units += m.qty;
+    cur.units += m.exciseCents < 0 ? -m.qty : m.qty; // credited sales return bottles to bond
     cur.cents += m.exciseCents;
     per.set(m.productId, cur);
   }
@@ -121,10 +121,27 @@ export async function exciseReturn(tx: Tx, administrationId: string, p: Period) 
       const product = products.find((x) => x.id === pid)!;
       const rate = rates.get(product.category);
       const basis = rate ? returnBasis(product, rate, v.units) : { hl: (v.units * product.volumeMl) / 100_000, text: "—" };
-      return { productId: pid, name: product.name, sku: product.sku, category: product.category, units: v.units, hl: basis.hl, basis: basis.text, exciseCents: v.cents };
+      return {
+        productId: pid,
+        name: product.name,
+        sku: product.sku,
+        category: product.category,
+        units: v.units,
+        hl: basis.hl,
+        basis: basis.text,
+        // Structured basis so screens can format it per locale.
+        basisKind: rate?.basis ?? null,
+        rateCents: rate?.rateCents ?? 0,
+        abvBp: product.abvBp,
+        platoTenths: product.platoTenths,
+        alcoholHl: (basis.hl * product.abvBp) / 10_000,
+        exciseCents: v.cents,
+      };
     })
     .sort((a, b) => b.exciseCents - a.exciseCents);
   const filed = await tx.taxReturn.findUnique({ where: { administrationId_type_periodStart: { administrationId, type: "EXCISE", periodStart: p.start } } });
+  const fromIds = [...new Set(moves.map((m) => m.fromWarehouseId).filter((x): x is string => !!x))];
+  const releasedFrom = fromIds.length ? (await tx.warehouse.findMany({ where: { administrationId, id: { in: fromIds } }, select: { name: true } })).map((w) => w.name) : [];
   return {
     period: p,
     due: dueDateFor(p),
@@ -133,6 +150,8 @@ export async function exciseReturn(tx: Tx, administrationId: string, p: Period) 
     releasedUnits: rows.reduce((a, r) => a + r.units, 0),
     shippedSuspendedUnits: shippedSuspended,
     licence: admin.exciseLicenceNo,
+    authority: admin.exciseAuthority,
+    releasedFrom,
     filed,
   };
 }
@@ -162,4 +181,69 @@ export async function markFiled(
     },
     update: { boxes: input.boxes, totalCents: input.totalCents, status: "FILED", filedRef: input.reference, filedAt: new Date(), filedById: input.userId },
   });
+}
+
+/** Filed returns of one type, newest first. */
+export async function filedReturns(tx: Tx, administrationId: string, type: TaxReturnType, take = 12) {
+  return tx.taxReturn.findMany({ where: { administrationId, type, status: "FILED" }, orderBy: { periodStart: "desc" }, take });
+}
+
+export type CheckState = "ok" | "warn";
+export interface VatCheck {
+  key: "invoices" | "receipts" | "vies" | "import" | "bank";
+  state: CheckState;
+  vars: Record<string, string | number>;
+  /** Variant of the message: e.g. "ok", "open", "none", "later". */
+  variant: string;
+}
+
+/**
+ * Checks before filing a VAT return, computed from the books:
+ * invoices and receipts dated in the period are booked, ICP customers are
+ * VIES-validated, import VAT is recorded, bank lines in the period reconciled.
+ */
+export async function vatChecks(tx: Tx, administrationId: string, p: Period, icp?: Awaited<ReturnType<typeof icpListing>>): Promise<VatCheck[]> {
+  const inPeriod = { gte: p.start, lte: p.end };
+  const [salesDone, salesDraft, purchDone, purchOpen, receiptsOpen, receiptsDone, importOpen, importDone, bankOpen, bankLater, importVat] = await Promise.all([
+    tx.salesInvoice.count({ where: { administrationId, issueDate: inPeriod, status: { in: ["OPEN", "PAID", "CREDITED"] } } }),
+    tx.salesInvoice.count({ where: { administrationId, issueDate: inPeriod, status: "DRAFT" } }),
+    tx.purchaseInvoice.count({ where: { administrationId, issueDate: inPeriod, status: { in: ["BOOKED", "PAID"] } } }),
+    tx.purchaseInvoice.count({ where: { administrationId, issueDate: inPeriod, status: "TO_APPROVE" } }),
+    tx.receipt.count({ where: { administrationId, date: inPeriod, status: { not: "BOOKED" } } }),
+    tx.receipt.count({ where: { administrationId, date: inPeriod, status: "BOOKED" } }),
+    tx.purchaseInvoice.count({ where: { administrationId, issueDate: inPeriod, vatTreatment: "IMPORT", status: "TO_APPROVE" } }),
+    tx.purchaseInvoice.count({ where: { administrationId, issueDate: inPeriod, vatTreatment: "IMPORT", status: { in: ["BOOKED", "PAID"] } } }),
+    tx.bankTransaction.count({ where: { administrationId, date: inPeriod, status: "UNRECONCILED" } }),
+    tx.bankTransaction.count({ where: { administrationId, date: { gt: p.end }, status: "UNRECONCILED" } }),
+    tx.journalLine.aggregate({
+      where: { administrationId, vatCode: "IMPORT", accountCode: ACC.vatPayable, entry: { date: inPeriod } },
+      _sum: { creditCents: true, debitCents: true },
+    }),
+  ]);
+  const listing = icp ?? (await icpListing(tx, administrationId, p));
+  const unvalidated = listing.filter((r) => r.viesValid !== true);
+  const importVatCents = (importVat._sum.creditCents ?? 0) - (importVat._sum.debitCents ?? 0);
+  const openDocs = salesDraft + purchOpen;
+  return [
+    {
+      key: "invoices",
+      state: openDocs ? "warn" : "ok",
+      variant: openDocs ? "open" : "ok",
+      vars: { n: salesDone + purchDone, purchases: purchOpen, drafts: salesDraft },
+    },
+    { key: "receipts", state: receiptsOpen ? "warn" : "ok", variant: receiptsOpen ? "open" : receiptsDone ? "ok" : "none", vars: { n: receiptsOpen || receiptsDone } },
+    {
+      key: "vies",
+      state: unvalidated.length ? "warn" : "ok",
+      variant: unvalidated.length ? "open" : listing.length ? "ok" : "none",
+      vars: { n: unvalidated.length || listing.length, names: unvalidated.map((r) => r.name).join(", ") },
+    },
+    {
+      key: "import",
+      state: importOpen || (importDone && !importVatCents) ? "warn" : "ok",
+      variant: importOpen ? "open" : importDone && !importVatCents ? "missing" : importDone || importVatCents ? "ok" : "none",
+      vars: { n: importOpen || importDone, cents: importVatCents },
+    },
+    { key: "bank", state: bankOpen ? "warn" : "ok", variant: bankOpen ? "open" : bankLater ? "later" : "ok", vars: { n: bankOpen || bankLater } },
+  ];
 }

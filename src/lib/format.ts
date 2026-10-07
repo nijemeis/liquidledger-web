@@ -49,13 +49,18 @@ export function makeFormatters(locale: Locale) {
       return dec(bp % 100 === 0 ? 0 : bp % 10 === 0 ? 1 : 2).format(bp / 100) + "%";
     },
     dateLong: (d: Date) => dateLong.format(d),
-    date: (d: Date) => dateShort.format(d),
-    dateMed: (d: Date) => dateMed.format(d),
-    month: (d: Date) => monthShort.format(d),
+    date: (d: Date) => fixSept(dateShort.format(d)),
+    dateMed: (d: Date) => fixSept(dateMed.format(d)),
+    month: (d: Date) => fixSept(monthShort.format(d)),
     monthLong: (d: Date) => monthLong.format(d),
     time: (d: Date) => time.format(d),
     dateTime: (d: Date) => dateTime.format(d),
   };
+}
+
+/** en-GB abbreviates September as "Sept"; the design uses "Sep". */
+function fixSept(s: string) {
+  return s.replace(/\bSept\b/, "Sep");
 }
 
 export type Formatters = ReturnType<typeof makeFormatters>;

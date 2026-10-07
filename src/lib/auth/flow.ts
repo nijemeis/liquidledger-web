@@ -1,8 +1,8 @@
 import "server-only";
-import type { AuthChallenge, User } from "@prisma/client";
+import type { AuthChallenge, Prisma, User } from "@prisma/client";
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from "@simplewebauthn/server";
-import { prisma } from "../db";
-import { normaliseRecoveryCode, randomDigits, randomToken, recoveryCode, sha256, verifyPassword } from "../crypto";
+import { prisma, withSystem } from "../db";
+import { hashPassword, normaliseRecoveryCode, randomDigits, randomToken, recoveryCode, sha256, verifyPassword } from "../crypto";
 import { env } from "../env";
 import { FIXED, getPolicies } from "../policies";
 import { requestMeta } from "../request";
@@ -13,6 +13,7 @@ import { COOKIE, deleteCookie, getCookie, setCookie } from "./cookies";
 import { rateLimit } from "./ratelimit";
 import { createUserSession } from "./session";
 import { newTotpSecret, openSecret, sealSecret, totpEnrollment, verifyTotp } from "./totp";
+import { COUNTRIES, addMembership, createClientWithAdministration } from "../domain/setup";
 import {
   authenticationOptions,
   passkeyName,
@@ -138,7 +139,13 @@ export async function passwordStep(emailRaw: string, password: string): Promise<
   }
   const user = await prisma.user.findUnique({ where: { email } });
   const valid = await verifyPassword(user?.passwordHash, password);
-  if (!user || user.status === "DISABLED" || user.status === "INVITED") return { ok: false, error: "invalid" };
+  if (!user || user.status === "DISABLED") return { ok: false, error: "invalid" };
+  if (user.status === "INVITED") {
+    // Accepted the invite (password set) but never finished 2FA set-up: resume enrolment.
+    if (!user.passwordHash || !valid) return { ok: false, error: "invalid" };
+    await startChallenge(user.id, "enroll");
+    return { ok: true, next: "enroll" };
+  }
 
   const lock = isLocked(user);
   if (lock.locked) return { ok: false, error: "locked", minutes: lock.minutes };
@@ -471,11 +478,11 @@ async function notifyNewDevice(user: User, ip: string | null, userAgent: string 
 // Password reset & invite acceptance helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function createEmailToken(userId: string, purpose: "INVITE" | "RESET_PASSWORD", hours: number) {
+export async function createEmailToken(userId: string, purpose: "INVITE" | "RESET_PASSWORD", hours: number, data?: Prisma.InputJsonValue) {
   const token = randomToken();
   await prisma.emailToken.updateMany({ where: { userId, purpose, usedAt: null }, data: { usedAt: new Date() } });
   await prisma.emailToken.create({
-    data: { userId, purpose, tokenHash: sha256(token), expiresAt: new Date(Date.now() + hours * 3600_000) },
+    data: { userId, purpose, tokenHash: sha256(token), expiresAt: new Date(Date.now() + hours * 3600_000), ...(data !== undefined ? { data } : {}) },
   });
   return token;
 }
@@ -495,4 +502,256 @@ export function passwordProblem(password: string, email: string): string | null 
   const common = ["password", "wachtwoord", "123456789012", "qwertyuiopas", "liquidledger"];
   if (common.some((c) => password.toLowerCase().includes(c))) return "That password is too easy to guess.";
   return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Forgot password, reset, invite acceptance, free trial and "this wasn't me"
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Invite token payload. Older tokens (seed) may only carry `inviter`. */
+export type InviteData = { inviter?: string | null; administrationId?: string; role?: string; trial?: boolean };
+
+const PASSWORD_PROBLEM_CODE: Record<string, "pwShort" | "pwLong" | "pwEmail" | "pwEasy"> = {
+  "Use at least 12 characters.": "pwShort",
+  "That password is too long.": "pwLong",
+  "Don't use your email address in your password.": "pwEmail",
+  "That password is too easy to guess.": "pwEasy",
+};
+
+/** Same rules as passwordProblem(), returned as an i18n key under `auth.` (or null). */
+export function passwordProblemKey(password: string, email: string): string | null {
+  const p = passwordProblem(password, email);
+  return p ? (PASSWORD_PROBLEM_CODE[p] ?? "pwEasy") : null;
+}
+
+/** Fire-and-forget mail so the response time doesn't reveal whether an account exists. */
+function mailQuietly(mail: Parameters<typeof sendMail>[0]) {
+  void sendMail(mail).catch((e) => console.error("[mail]", e));
+}
+
+async function clientOf(userId: string) {
+  const m = await prisma.membership.findFirst({ where: { userId }, include: { administration: true }, orderBy: { createdAt: "asc" } });
+  return m ? { clientId: m.administration.clientId, administrationId: m.administrationId } : { clientId: null, administrationId: null };
+}
+
+/** "Forgot password?": always the same neutral answer; throttled per IP and per email. */
+export async function requestPasswordReset(emailRaw: string): Promise<{ ok: true } | { ok: false; error: "throttled" }> {
+  const email = emailRaw.trim().toLowerCase().slice(0, 320);
+  const { ip } = await requestMeta();
+  if (!(await rateLimit(`forgot:ip:${ip ?? "unknown"}`, 10, 60 * 60))) return { ok: false, error: "throttled" };
+  // Per address we silently stop sending (the answer stays neutral).
+  if (!email.includes("@") || !(await rateLimit(`forgot:email:${email}`, 3, 60 * 60))) return { ok: true };
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (user && (user.status === "ACTIVE" || user.status === "LOCKED")) {
+    const token = await createEmailToken(user.id, "RESET_PASSWORD", 1);
+    const where = await clientOf(user.id);
+    await audit({ actor: { type: "USER", id: user.id, label: label(user) }, action: "auth.reset_requested", summary: "Requested a password reset link", ...where });
+    mailQuietly({
+      to: user.email,
+      subject: "Reset your Liquid Ledger password",
+      text:
+        `Hi ${user.name},\n\nSomeone (hopefully you) asked to reset the password of your Liquid Ledger account.\n\n` +
+        `Choose a new password here (the link works once, for 1 hour):\n${env.appUrl}/reset?token=${token}\n\n` +
+        `Didn't ask for this? Ignore this email — your password stays the same.\n\n— Liquid Ledger`,
+    });
+  }
+  return { ok: true };
+}
+
+export type ResetResult = { ok: true } | { ok: false; error: "expired" | "differ" | "throttled" | string };
+
+/** Set a new password from a reset link: unlocks, signs out everywhere and forgets trusted devices. */
+export async function resetPasswordWithToken(token: string, password: string, repeat: string): Promise<ResetResult> {
+  const { ip } = await requestMeta();
+  if (!(await rateLimit(`reset:ip:${ip ?? "unknown"}`, 20, 15 * 60))) return { ok: false, error: "throttled" };
+  const row = await findEmailToken(token, "RESET_PASSWORD");
+  if (!row?.user || row.user.status === "DISABLED" || row.user.status === "INVITED") return { ok: false, error: "expired" };
+  const user = row.user;
+  if (password !== repeat) return { ok: false, error: "differ" };
+  const problem = passwordProblemKey(password, user.email);
+  if (problem) return { ok: false, error: problem };
+  const passwordHash = await hashPassword(password);
+  const now = new Date();
+  const done = await prisma.$transaction(async (tx) => {
+    const used = await tx.emailToken.updateMany({ where: { id: row.id, usedAt: null }, data: { usedAt: now } });
+    if (used.count !== 1) return false;
+    await tx.emailToken.updateMany({ where: { userId: user.id, purpose: "RESET_PASSWORD", usedAt: null }, data: { usedAt: now } });
+    await tx.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        passwordChangedAt: now,
+        failedAttempts: 0,
+        lockedUntil: null,
+        lockReason: null,
+        ...(user.status === "LOCKED" ? { status: "ACTIVE" as const } : {}),
+      },
+    });
+    await tx.session.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: now } });
+    await tx.userDevice.updateMany({ where: { userId: user.id }, data: { trustedUntil: null } });
+    await tx.authChallenge.deleteMany({ where: { userId: user.id } });
+    return true;
+  });
+  if (!done) return { ok: false, error: "expired" };
+  await deleteCookie(COOKIE.session);
+  const where = await clientOf(user.id);
+  await audit({
+    actor: { type: "USER", id: user.id, label: label(user) },
+    action: "auth.password_reset",
+    summary: `Reset password via email link${user.status === "LOCKED" ? " · account unlocked" : ""} · all sessions signed out`,
+    ...where,
+  });
+  await sendMail({
+    to: user.email,
+    subject: "Your Liquid Ledger password was changed",
+    text:
+      `Hi ${user.name},\n\nThe password of your Liquid Ledger account was just changed with a reset link.\n` +
+      `We signed out every session and forgot your trusted devices. Two-factor authentication is still required at your next sign-in.\n\n` +
+      `Time: ${now.toUTCString()}\nIP address: ${ip ?? "unknown"}\n\n` +
+      `If this wasn't you, reset your password again right away (${env.appUrl}/forgot) and contact support@liquidledger.net.\n\n— Liquid Ledger`,
+  });
+  return { ok: true };
+}
+
+/** What the invite page shows: company, inviter, role. Null when the link is invalid. */
+export async function inviteDetails(token: string) {
+  const row = await findEmailToken(token, "INVITE");
+  if (!row?.user || row.user.status !== "INVITED") return null;
+  const data = (row.data ?? {}) as InviteData;
+  const memberships = await prisma.membership.findMany({
+    where: { userId: row.user.id, administration: { deletedAt: null } },
+    include: { administration: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const m = memberships.find((x) => x.administrationId === data.administrationId) ?? memberships[0];
+  if (!m) return null;
+  return {
+    email: row.user.email,
+    name: row.user.name,
+    company: m.administration.legalName,
+    role: m.role,
+    inviter: data.inviter ?? null,
+    trial: Boolean(data.trial),
+  };
+}
+
+/**
+ * Accept an invite: set name + password, use up the token and start the
+ * mandatory 2FA enrolment. The user stays INVITED until enrolment completes.
+ */
+export async function acceptInvite(token: string, nameRaw: string, password: string, repeat: string): Promise<ResetResult> {
+  const { ip } = await requestMeta();
+  if (!(await rateLimit(`invite:ip:${ip ?? "unknown"}`, 20, 15 * 60))) return { ok: false, error: "throttled" };
+  const row = await findEmailToken(token, "INVITE");
+  if (!row?.user || row.user.status !== "INVITED") return { ok: false, error: "expired" };
+  const user = row.user;
+  const name = nameRaw.trim().replace(/\s+/g, " ").slice(0, 120);
+  if (!name) return { ok: false, error: "nameMissing" };
+  if (password !== repeat) return { ok: false, error: "differ" };
+  const problem = passwordProblemKey(password, user.email);
+  if (problem) return { ok: false, error: problem };
+  const passwordHash = await hashPassword(password);
+  const used = await prisma.emailToken.updateMany({ where: { id: row.id, usedAt: null }, data: { usedAt: new Date() } });
+  if (used.count !== 1) return { ok: false, error: "expired" };
+  await prisma.user.update({ where: { id: user.id }, data: { name, passwordHash, passwordChangedAt: new Date(), failedAttempts: 0 } });
+  const where = await clientOf(user.id);
+  await audit({ actor: { type: "USER", id: user.id, label: name }, action: "user.invite_accepted", summary: "Accepted the invite and set a password", ...where });
+  await startEnrollmentFor(user.id);
+  return { ok: true };
+}
+
+export type TrialInput = { company: string; country: string; name: string; email: string; locale: string };
+
+/**
+ * "Start a free trial": creates the client (Business plan, 30-day trial), its
+ * administration and an INVITED owner, then emails a link to finish setting
+ * up. An existing address gets a "you already have an account" email instead;
+ * the caller shows the same confirmation either way.
+ */
+export async function startTrial(input: TrialInput): Promise<{ ok: true } | { ok: false; error: "throttled" }> {
+  const { ip } = await requestMeta();
+  if (!(await rateLimit(`signup:ip:${ip ?? "unknown"}`, 5, 60 * 60))) return { ok: false, error: "throttled" };
+  const email = input.email.trim().toLowerCase();
+  if (!(await rateLimit(`signup:email:${email}`, 3, 60 * 60))) return { ok: true };
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    mailQuietly({
+      to: email,
+      subject: "You already have a Liquid Ledger account",
+      text:
+        `Hi ${existing.name},\n\nSomeone (hopefully you) tried to start a Liquid Ledger trial with this email address, but you already have an account.\n\n` +
+        `Sign in: ${env.appUrl}/login\nForgot your password? ${env.appUrl}/forgot\n\n` +
+        `Didn't do this? You can ignore this email.\n\n— Liquid Ledger`,
+    });
+    return { ok: true };
+  }
+  const country = COUNTRIES[input.country] ? input.country : "NL";
+  let created: { userId: string; clientId: string; administrationId: string; company: string };
+  try {
+    created = await withSystem(async (tx) => {
+      const { client, administration } = await createClientWithAdministration(tx, { name: input.company, country, plan: "BUSINESS", trial: true });
+      const user = await tx.user.create({ data: { email, name: input.name, status: "INVITED", locale: input.locale } });
+      await addMembership(tx, user.id, administration.id, "OWNER");
+      return { userId: user.id, clientId: client.id, administrationId: administration.id, company: administration.legalName };
+    });
+  } catch (e) {
+    // Lost a race on the unique email: behave like the existing-account case.
+    if (e instanceof Error && e.message.includes("Unique constraint")) return { ok: true };
+    throw e;
+  }
+  const token = await createEmailToken(created.userId, "INVITE", 72, { inviter: null, administrationId: created.administrationId, role: "OWNER", trial: true });
+  await audit({
+    actor: { type: "USER", id: created.userId, label: input.name },
+    action: "client.trial_started",
+    summary: `Started a 30-day trial · ${created.company} (${country}) · Business plan`,
+    clientId: created.clientId,
+    administrationId: created.administrationId,
+  });
+  await sendMail({
+    to: email,
+    subject: "Finish setting up Liquid Ledger",
+    text:
+      `Hi ${input.name},\n\nWelcome to Liquid Ledger! Your 30-day trial for ${created.company} is ready.\n\n` +
+      `Finish setting up — choose a password and set up two-factor authentication (the link works for 72 hours):\n` +
+      `${env.appUrl}/invite?token=${token}\n\n— Liquid Ledger`,
+  });
+  return { ok: true };
+}
+
+/** Whether a "this wasn't me" link is still usable (shown before confirming). */
+export async function lockTokenValid(token: string): Promise<boolean> {
+  const row = await findEmailToken(token, "LOCK_ACCOUNT");
+  return Boolean(row?.user && row.user.status !== "DISABLED");
+}
+
+/** "This wasn't me": lock the account, sign out everywhere, forget trusted devices. */
+export async function lockAccountWithToken(token: string): Promise<{ ok: boolean }> {
+  const row = await findEmailToken(token, "LOCK_ACCOUNT");
+  if (!row?.user || row.user.status === "DISABLED") return { ok: false };
+  const user = row.user;
+  const now = new Date();
+  const done = await prisma.$transaction(async (tx) => {
+    const used = await tx.emailToken.updateMany({ where: { id: row.id, usedAt: null }, data: { usedAt: now } });
+    if (used.count !== 1) return false;
+    await tx.user.update({
+      where: { id: user.id },
+      data: { status: "LOCKED", lockedUntil: null, lockReason: "Locked by the user from a sign-in alert", failedAttempts: 0 },
+    });
+    await tx.session.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: now } });
+    await tx.userDevice.updateMany({ where: { userId: user.id }, data: { trustedUntil: null } });
+    await tx.authChallenge.deleteMany({ where: { userId: user.id } });
+    return true;
+  });
+  if (!done) return { ok: false };
+  const where = await clientOf(user.id);
+  await audit({ actor: { type: "USER", id: user.id, label: label(user) }, action: "auth.locked", summary: "Account locked by the user from a new-device alert · all sessions signed out", ...where });
+  await sendMail({
+    to: user.email,
+    subject: "Your Liquid Ledger account is locked",
+    text:
+      `Hi ${user.name},\n\nYou locked your Liquid Ledger account from a sign-in alert. We signed out every session and forgot your trusted devices.\n\n` +
+      `To get back in, reset your password: ${env.appUrl}/forgot\nResetting unlocks the account. Two-factor authentication is still required.\n\n` +
+      `Questions? Contact support@liquidledger.net.\n\n— Liquid Ledger`,
+  });
+  return { ok: true };
 }

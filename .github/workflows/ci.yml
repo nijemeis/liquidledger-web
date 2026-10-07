@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: liquidledger
+          POSTGRES_PASSWORD: liquidledger
+          POSTGRES_DB: liquidledger_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U liquidledger" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # POSTGRES_USER is a superuser in this image; create a normal role so row-level security applies in tests.
+      TEST_DATABASE_URL: postgresql://app:app@localhost:5432/liquidledger_test
+      DATABASE_URL: postgresql://app:app@localhost:5432/liquidledger_test
+      DIRECT_URL: postgresql://app:app@localhost:5432/liquidledger_test
+      APP_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Create app role
+        run: |
+          PGPASSWORD=liquidledger psql -h localhost -U liquidledger -d liquidledger_test -c "CREATE ROLE app LOGIN PASSWORD 'app';" -c "ALTER DATABASE liquidledger_test OWNER TO app;" -c "ALTER SCHEMA public OWNER TO app;"
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

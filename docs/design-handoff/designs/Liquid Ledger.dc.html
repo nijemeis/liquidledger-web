@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Oleo+Script:wght@400;700&display=swap">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#14171f;font-family:"Geist",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}a{color:#7a1f3d;text-decoration:none}a:hover{color:#5f1730;text-decoration:underline}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #7a1f3d;outline-offset:1px}.n{font-variant-numeric:tabular-nums}</style>
+</helmet>
+<div style="display:grid;grid-template-columns:{{ sideW }} minmax(0,1fr);min-height:100vh;transition:grid-template-columns 0.18s ease">
+
+<aside style="position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden;background:#fff;border-right:1px solid #e4e7ec;display:flex;flex-direction:column;padding:14px {{ sidePadX }} 16px;gap:2px">
+  <div style="display:flex;align-items:center;justify-content:{{ sideJustify }};gap:10px;padding:4px {{ sideBrandPad }} 16px">
+    <svg viewBox="0 0 48 48" width="34" height="34" style="flex:none;display:block" aria-hidden="true"><defs><clipPath id="ll-logo"><circle cx="24" cy="24" r="12"></circle></clipPath></defs><circle cx="24" cy="24" r="22" fill="#7a1f3d"></circle><circle cx="24" cy="24" r="14" fill="none" stroke="#fff" stroke-width="2"></circle><g clip-path="url(#ll-logo)" stroke="#fff" stroke-width="1.2" opacity="0.45"><path d="M16 10V38M20 10V38M24 10V38M28 10V38M32 10V38"></path></g><circle cx="24" cy="30" r="2.6" fill="#fff"></circle></svg>
+    <sc-if value="{{ sideOpen }}" hint-placeholder-val="{{ true }}">
+      <div style="font-family:'Oleo Script',cursive;font-size:22px;line-height:1;color:#7a1f3d;white-space:nowrap;flex:1;min-width:0">Liquid Ledger</div>
+      <button onClick="{{ toggleSide }}" title="{{ t.collapse }}" aria-label="{{ t.collapse }}" style="flex:none;width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;color:#5b6474;cursor:pointer" style-hover="background:#f3f5f8;color:#7a1f3d"><i class="ph ph-sidebar-simple" style="font-size:18px"></i></button>
+    </sc-if>
+  </div>
+  <sc-if value="{{ sideClosed }}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{ toggleSide }}" title="{{ t.expand }}" aria-label="{{ t.expand }}" style="display:grid;place-items:center;width:100%;height:34px;margin-bottom:6px;border:0;border-radius:7px;background:transparent;color:#5b6474;cursor:pointer" style-hover="background:#f3f5f8;color:#7a1f3d"><i class="ph ph-sidebar-simple" style="font-size:18px;transform:scaleX(-1)"></i></button>
+    <button title="Vale &amp; Hart Drinks B.V. · {{ t.fy }}" style="display:grid;place-items:center;width:40px;height:40px;margin:0 auto 12px;border:1px solid #f1d5df;border-radius:9px;background:#fcf5f7;font:inherit;font-size:12.5px;font-weight:700;color:#7a1f3d;cursor:pointer" style-hover="background:#f9eef2">VH</button>
+  </sc-if>
+  <sc-if value="{{ sideOpen }}" hint-placeholder-val="{{ true }}">
+    <button style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;margin-bottom:12px;border:1px solid #f1d5df;border-radius:9px;background:#fcf5f7;font:inherit;text-align:left;cursor:pointer" style-hover="background:#f9eef2">
+      <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Vale &amp; Hart Drinks B.V.</div><div style="font-size:12px;color:#5b6474">{{ t.fy }}</div></div>
+      <i class="ph ph-caret-up-down" style="font-size:16px;color:#5b6474"></i>
+    </button>
+  </sc-if>
+  <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="4">
+    <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:10px">
+      <sc-if value="{{ g.hasLabel }}" hint-placeholder-val="{{ true }}"><div style="font-size:11.5px;font-weight:500;color:#8a93a3;padding:6px 10px 4px;letter-spacing:0.02em;white-space:nowrap">{{ g.label }}</div></sc-if>
+      <sc-if value="{{ g.hasRule }}" hint-placeholder-val="{{ false }}"><div style="height:1px;background:#eef0f3;margin:4px 8px 6px"></div></sc-if>
+      <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+        <button onClick="{{ it.go }}" title="{{ it.label }}" style="position:relative;display:flex;align-items:center;justify-content:{{ sideJustify }};gap:10px;width:100%;padding:{{ sideItemPad }};border:0;border-radius:7px;background:{{ it.bg }};color:{{ it.fg }};box-shadow:{{ it.edge }};font:inherit;font-size:14px;font-weight:{{ it.weight }};cursor:pointer;text-align:left">
+          <i class="ph {{ it.icon }}" style="font-size:{{ sideIcon }}"></i>
+          <sc-if value="{{ sideOpen }}" hint-placeholder-val="{{ true }}"><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.label }}</span></sc-if>
+          <sc-if value="{{ it.hasBadge }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ sideOpen }}" hint-placeholder-val="{{ true }}"><span class="n" style="font-size:11.5px;font-weight:600;min-width:20px;text-align:center;padding:1px 6px;border-radius:999px;background:#7a1f3d;color:#fff">{{ it.badge }}</span></sc-if>
+            <sc-if value="{{ sideClosed }}" hint-placeholder-val="{{ false }}"><span class="n" style="position:absolute;top:3px;right:5px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#7a1f3d;color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;box-shadow:0 0 0 2px #fff">{{ it.badge }}</span></sc-if>
+          </sc-if>
+        </button>
+      </sc-for>
+    </div>
+  </sc-for>
+  <div style="margin-top:auto;display:flex;flex-direction:column;gap:2px">
+    <button onClick="{{ notInProto }}" title="{{ t.settings }}" style="display:flex;align-items:center;justify-content:{{ sideJustify }};gap:10px;width:100%;padding:7px 10px;border:0;border-radius:7px;background:transparent;color:#3a4250;font:inherit;font-size:14px;cursor:pointer;text-align:left" style-hover="background:#f3f5f8"><i class="ph ph-gear-six" style="font-size:18px"></i><sc-if value="{{ sideOpen }}" hint-placeholder-val="{{ true }}"><span>{{ t.settings }}</span></sc-if></button>
+    <button onClick="{{ notInProto }}" title="{{ t.help }}" style="display:flex;align-items:center;justify-content:{{ sideJustify }};gap:10px;width:100%;padding:7px 10px;border:0;border-radius:7px;background:transparent;color:#3a4250;font:inherit;font-size:14px;cursor:pointer;text-align:left" style-hover="background:#f3f5f8"><i class="ph ph-lifebuoy" style="font-size:18px"></i><sc-if value="{{ sideOpen }}" hint-placeholder-val="{{ true }}"><span>{{ t.help }}</span></sc-if></button>
+  </div>
+</aside>
+
+<div style="min-width:0;display:flex;flex-direction:column">
+  <div style="position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:12px 24px;background:rgba(245,246,248,0.92);backdrop-filter:blur(8px);border-bottom:1px solid #e4e7ec">
+    <div style="flex:1 1 160px;min-width:0;max-width:520px;display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;background:#fff;border:1px solid #d5d9e0;border-radius:9px;color:#8a93a3">
+      <i class="ph ph-magnifying-glass" style="font-size:17px"></i>
+      <input placeholder="{{ t.search }}" style="flex:1;min-width:0;border:0;outline:0;font:inherit;font-size:14px;background:transparent;color:#14171f">
+      <span style="flex:none;font-size:12px;padding:1px 6px;border:1px solid #e4e7ec;border-radius:5px">⌘K</span>
+    </div>
+    <div style="flex:0 1 auto"></div>
+    <div style="position:relative;flex:none">
+      <button onClick="{{ toggleLang }}" aria-label="{{ t.lang }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 10px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-globe-simple" style="font-size:17px;color:#7a1f3d"></i>{{ langCode }}<i class="ph ph-caret-down" style="font-size:12px;color:#5b6474"></i></button>
+      <sc-if value="{{ langOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;right:0;top:44px;width:220px;background:#fff;border:1px solid #e4e7ec;border-radius:10px;box-shadow:0 12px 32px rgba(20,23,31,0.12);padding:6px;display:flex;flex-direction:column;z-index:30">
+          <div style="font-size:11.5px;font-weight:500;color:#8a93a3;padding:6px 10px 4px">{{ t.lang }}</div>
+          <sc-for list="{{ langs }}" as="l" hint-placeholder-count="7">
+            <button onClick="{{ l.pick }}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:7px;background:{{ l.bg }};font:inherit;font-size:14px;color:#14171f;cursor:pointer;text-align:left" style-hover="background:#f9eef2"><span class="n" style="width:26px;font-size:12px;font-weight:600;color:#7a1f3d">{{ l.code }}</span><span style="flex:1">{{ l.name }}</span><sc-if value="{{ l.on }}" hint-placeholder-val="{{ false }}"><i class="ph ph-check" style="color:#7a1f3d"></i></sc-if></button>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+    <button onClick="{{ goUpload }}" style="flex:none;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#f3f5f8"><i class="ph ph-upload-simple" style="font-size:16px"></i>{{ t.upload }}</button>
+    <div style="position:relative;flex:none">
+      <button onClick="{{ toggleMenu }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>{{ t.new }}<i class="ph ph-caret-down" style="font-size:13px"></i></button>
+      <sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:absolute;right:0;top:44px;width:240px;background:#fff;border:1px solid #e4e7ec;border-radius:10px;box-shadow:0 12px 32px rgba(20,23,31,0.12);padding:6px;display:flex;flex-direction:column">
+          <sc-for list="{{ newMenu }}" as="m" hint-placeholder-count="5">
+            <button onClick="{{ m.go }}" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:7px;background:transparent;font:inherit;font-size:14px;color:#14171f;cursor:pointer;text-align:left" style-hover="background:#f3f5f8"><i class="ph {{ m.icon }}" style="font-size:17px;color:#5b6474"></i><span style="flex:1">{{ m.label }}</span><span style="font-size:12px;color:#8a93a3">{{ m.key }}</span></button>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+    <button aria-label="Notifications" style="flex:none;width:36px;height:36px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;cursor:pointer;color:#3a4250" style-hover="background:#e9ecf1"><i class="ph ph-bell" style="font-size:19px"></i></button>
+    <div style="flex:none;width:32px;height:32px;border-radius:50%;background:#f1d5df;color:#7a1f3d;display:grid;place-items:center;font-weight:600;font-size:13px">MV</div>
+  </div>
+
+  <main style="padding:28px 32px 80px;min-width:0">
+
+  <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.date }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.greeting }}</h1></div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5b6474"><i class="ph ph-arrows-clockwise"></i>{{ t.synced }}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:14px">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+        <button onClick="{{ k.go }}" style="text-align:left;font:inherit;color:inherit;cursor:pointer;background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px" style-hover="border-color:#e3b8c6">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5b6474"><i class="ph {{ k.icon }}" style="font-size:17px"></i>{{ k.label }}</div>
+          <div class="n" style="font-size:26px;font-weight:600;letter-spacing:-0.02em">{{ k.value }}</div>
+          <div style="font-size:12.5px;color:{{ k.noteColor }}">{{ k.note }}</div>
+        </button>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin-bottom:14px">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+          <div style="font-weight:600;font-size:15px">{{ t.cash }}</div>
+          <div style="display:flex;gap:14px;font-size:12.5px;color:#5b6474"><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#7a1f3d"></span>In</span><span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#e8c3cf"></span>Out</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;height:200px;align-items:end;padding-bottom:4px;border-bottom:1px solid #eef0f3">
+          <sc-for list="{{ cash }}" as="m" hint-placeholder-count="6">
+            <div style="display:flex;gap:4px;align-items:flex-end;height:100%;justify-content:center">
+              <div title="In {{ m.inF }}" style="width:42%;max-width:22px;height:{{ m.hin }};background:#7a1f3d;border-radius:4px 4px 0 0"></div>
+              <div title="Out {{ m.outF }}" style="width:42%;max-width:22px;height:{{ m.hout }};background:#e8c3cf;border-radius:4px 4px 0 0"></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-top:6px">
+          <sc-for list="{{ cash }}" as="m" hint-placeholder-count="6"><div style="text-align:center;font-size:12px;color:#5b6474">{{ m.label }}</div></sc-for>
+        </div>
+        <div style="display:flex;gap:28px;margin-top:14px;font-size:13px;flex-wrap:wrap">
+          <div><span style="color:#5b6474">Net September </span><span class="n" style="font-weight:600;color:#157347">+€23,000</span></div>
+          <div><span style="color:#5b6474">Expected next 30 days </span><span class="n" style="font-weight:600">+€19,640</span></div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-weight:600;font-size:15px">{{ t.todo }}</div><span class="n" style="font-size:13px;color:#5b6474">{{ todoCount }} {{ t.open }}</span></div>
+        <sc-for list="{{ todos }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.go }}" style="display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:10px 6px;border:0;border-bottom:1px solid #f0f2f5;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer" style-hover="background:#f9fafb">
+            <div style="width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:{{ t.bg }};color:{{ t.fg }}"><i class="ph {{ t.icon }}" style="font-size:17px"></i></div>
+            <div style="min-width:0"><div style="font-weight:500">{{ t.title }}</div><div style="font-size:12.5px;color:#5b6474">{{ t.meta }}</div></div>
+            <i class="ph ph-caret-right" style="color:#8a93a3"></i>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:12px">{{ t.receivables }}</div>
+        <div style="display:flex;height:10px;border-radius:999px;overflow:hidden;background:#f0f2f5;margin-bottom:12px"><div style="width:{{ agingCurW }};background:#7a1f3d"></div><div style="width:{{ agingOverW }};background:#e5484d"></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;margin-bottom:14px">
+          <div><div style="color:#5b6474">Not yet due</div><div class="n" style="font-weight:600;font-size:16px">{{ agingCur }}</div></div>
+          <div><div style="color:#5b6474">Overdue</div><div class="n" style="font-weight:600;font-size:16px;color:#b42318">{{ overdueTotal }}</div></div>
+        </div>
+        <sc-for list="{{ topDebtors }}" as="d" hint-placeholder-count="3">
+          <div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:13px;border-top:1px solid #f0f2f5"><span>{{ d.cust }}</span><span class="n" style="font-weight:500">{{ d.amountF }}</span></div>
+        </sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:12px">{{ t.revcat }}</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ margins }}" as="m" hint-placeholder-count="4">
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px"><span>{{ m.label }}</span><span class="n"><b style="font-weight:600">{{ m.rev }}</b> <span style="color:#5b6474">· {{ m.pct }} margin</span></span></div>
+              <div style="height:8px;border-radius:999px;background:#f0f2f5"><div style="height:100%;width:{{ m.revW }};background:#7a1f3d;border-radius:999px"></div></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:8px">{{ t.deadlines }}</div>
+        <sc-for list="{{ deadlines }}" as="d" hint-placeholder-count="4">
+          <button onClick="{{ d.go }}" style="display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:8px 0;border:0;border-top:1px solid #f0f2f5;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer">
+            <div style="text-align:center;border-radius:8px;background:#f5f6f8;padding:4px 0"><div style="font-size:10.5px;color:#5b6474;text-transform:uppercase">{{ d.mon }}</div><div class="n" style="font-weight:600;font-size:16px;line-height:1.1">{{ d.day }}</div></div>
+            <div style="min-width:0"><div style="font-weight:500;font-size:13.5px">{{ d.title }}</div><div class="n" style="font-size:12.5px;color:#5b6474">{{ d.meta }}</div></div>
+            <span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:{{ d.bg }};color:{{ d.fg }}">{{ d.status }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isBank }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.daily }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.bank }}</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-paper-plane-tilt" style="font-size:16px"></i>Pay suppliers (SEPA)</button>
+        <sc-if value="{{ hasTx }}" hint-placeholder-val="{{ true }}"><button onClick="{{ matchAll }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-checks" style="font-size:16px"></i>Accept all {{ txCount }} suggestions</button></sc-if>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px">
+      <sc-for list="{{ accounts }}" as="a" hint-placeholder-count="3">
+        <button onClick="{{ a.pick }}" style="text-align:left;font:inherit;color:inherit;cursor:pointer;background:#fff;border:1px solid {{ a.border }};box-shadow:{{ a.ring }};border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#5b6474"><span>{{ a.name }}</span><span>{{ a.iban }}</span></div>
+          <div class="n" style="font-size:21px;font-weight:600">{{ a.balance }}</div>
+          <div style="font-size:12.5px;color:#5b6474">{{ a.note }}</div>
+        </button>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:4px;padding:0 12px;border-bottom:1px solid #e4e7ec">
+        <sc-for list="{{ bankTabs }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;padding:12px 10px;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}<span class="n" style="font-size:12px;padding:1px 7px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ t.count }}</span></button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ bankTodo }}" hint-placeholder-val="{{ true }}">
+        <div style="overflow-x:auto"><div style="min-width:900px">
+          <div style="display:grid;grid-template-columns:70px minmax(0,1.3fr) 120px minmax(0,1.6fr) 170px;gap:14px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Date</div><div>Counterparty</div><div style="text-align:right">Amount</div><div>Suggested booking</div><div></div></div>
+          <sc-for list="{{ txs }}" as="x" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:70px minmax(0,1.3fr) 120px minmax(0,1.6fr) 170px;gap:14px;padding:12px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3" style-hover="background:#fafbfc">
+              <div style="color:#5b6474">{{ x.date }}</div>
+              <div style="min-width:0"><div style="font-weight:500">{{ x.name }}</div><div style="font-size:12.5px;color:#5b6474;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ x.desc }}</div></div>
+              <div class="n" style="text-align:right;font-weight:600;color:{{ x.amtColor }}">{{ x.amountF }}</div>
+              <div style="display:flex;gap:10px;align-items:center;min-width:0;padding:6px 10px;border-radius:8px;background:#fcf5f7;border:1px dashed #e3b8c6">
+                <i class="ph {{ x.icon }}" style="font-size:17px;color:#7a1f3d"></i>
+                <div style="min-width:0"><div style="font-weight:500">{{ x.match }}</div><div style="font-size:12px;color:#5b6474">{{ x.conf }}</div></div>
+              </div>
+              <div style="display:flex;gap:6px;justify-content:flex-end">
+                <button onClick="{{ x.ok }}" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:7px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-check"></i>Match</button>
+                <button onClick="{{ notInProto }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:13px;cursor:pointer" style-hover="background:#f3f5f8">Other…</button>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noTx }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:48px 16px;text-align:center;color:#5b6474"><i class="ph ph-confetti" style="font-size:32px;color:#157347"></i><div style="font-weight:600;color:#14171f;margin-top:6px">All caught up</div>Every transaction on this account is booked.</div>
+          </sc-if>
+        </div></div>
+      </sc-if>
+      <sc-if value="{{ bankDone }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ doneTx }}" as="x" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:70px minmax(0,1.3fr) 120px minmax(0,1.6fr);gap:14px;padding:12px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3">
+            <div style="color:#5b6474">{{ x.date }}</div><div style="font-weight:500">{{ x.name }}</div>
+            <div class="n" style="text-align:right;font-weight:600;color:{{ x.amtColor }}">{{ x.amountF }}</div>
+            <div style="display:flex;align-items:center;gap:8px;color:#157347"><i class="ph ph-check-circle"></i><span style="color:#14171f">{{ x.match }}</span></div>
+          </div>
+        </sc-for>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSales }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.daily }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.sales }}</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onClick="{{ remind }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-bell-ringing" style="font-size:16px"></i>Send reminders</button>
+        <button onClick="{{ openDrawer }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>New invoice</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Open</div><div class="n" style="font-size:21px;font-weight:600">{{ openTotal }}</div></div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Overdue</div><div class="n" style="font-size:21px;font-weight:600;color:#b42318">{{ overdueTotal }}</div></div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Invoiced in September</div><div class="n" style="font-size:21px;font-weight:600">€164,357.00</div></div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Avg. days to get paid</div><div class="n" style="font-size:21px;font-weight:600">18 days</div></div>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:4px;padding:0 12px;border-bottom:1px solid #e4e7ec;flex-wrap:wrap">
+        <sc-for list="{{ invTabs }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;padding:12px 10px;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}<span class="n" style="font-size:12px;padding:1px 7px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ t.count }}</span></button>
+        </sc-for>
+      </div>
+      <div style="overflow-x:auto"><div style="min-width:860px">
+        <div style="display:grid;grid-template-columns:130px minmax(0,1.6fr) 80px 80px 110px 120px 130px;gap:14px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Number</div><div>Customer</div><div>Date</div><div>Due</div><div style="text-align:right">Excise incl.</div><div style="text-align:right">Total</div><div>Status</div></div>
+        <sc-for list="{{ invoicesShown }}" as="i" hint-placeholder-count="7">
+          <div style="display:grid;grid-template-columns:130px minmax(0,1.6fr) 80px 80px 110px 120px 130px;gap:14px;padding:12px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3;cursor:pointer" style-hover="background:#fafbfc">
+            <div class="n" style="color:#7a1f3d;font-weight:500">{{ i.no }}</div>
+            <div style="min-width:0"><div style="font-weight:500">{{ i.cust }}</div><div style="font-size:12.5px;color:#5b6474">{{ i.city }}</div></div>
+            <div style="color:#5b6474">{{ i.date }}</div><div style="color:#5b6474">{{ i.due }}</div>
+            <div class="n" style="text-align:right;color:#5b6474">{{ i.exciseF }}</div>
+            <div class="n" style="text-align:right;font-weight:600">{{ i.amountF }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:{{ i.bg }};color:{{ i.fg }}">{{ i.statusLabel }}</span></div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPurchases }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.daily }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.purchases }}</h1></div>
+      <div style="font-size:13px;color:#5b6474">Forward to <span style="color:#14171f;font-weight:500">inbox@valehart.liquidledger.app</span></div>
+    </div>
+    <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 18px;margin-bottom:16px;border-radius:12px;border:1.5px dashed {{ dropBorder }};background:{{ dropBg }}">
+      <div style="width:40px;height:40px;border-radius:10px;background:#f8e9ee;color:#7a1f3d;display:grid;place-items:center"><i class="ph {{ dropIcon }}" style="font-size:21px"></i></div>
+      <div style="flex:1;min-width:220px"><div style="font-weight:600">{{ dropTitle }}</div><div style="font-size:13px;color:#5b6474">PDF, photo or e-mail · any currency · products, alcohol %, VAT and excise are read automatically</div></div>
+      <button onClick="{{ trySample }}" style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8">Try a sample</button>
+    </div>
+    <div style="display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);gap:16px;align-items:start">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+        <div style="display:flex;gap:4px;padding:0 10px;border-bottom:1px solid #e4e7ec">
+          <sc-for list="{{ purchTabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;padding:11px 8px;border:0;background:none;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}<span class="n" style="font-size:12px;padding:1px 7px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ t.count }}</span></button>
+          </sc-for>
+        </div>
+        <sc-for list="{{ purchList }}" as="d" hint-placeholder-count="3">
+          <button onClick="{{ d.pick }}" style="display:flex;flex-direction:column;gap:3px;width:100%;padding:12px 14px;border:0;border-bottom:1px solid #eef0f3;border-left:3px solid {{ d.edge }};background:{{ d.bg }};font:inherit;color:inherit;text-align:left;cursor:pointer">
+            <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:600">{{ d.supplier }}</span><span class="n" style="font-weight:600">{{ d.totalF }}</span></div>
+            <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#5b6474"><span>{{ d.no }} · {{ d.date }}</span><span style="color:{{ d.flagColor }}">{{ d.flag }}</span></div>
+          </button>
+        </sc-for>
+        <sc-if value="{{ purchEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:28px 14px;text-align:center;color:#5b6474;font-size:13px"><i class="ph ph-check-circle" style="font-size:26px;color:#157347"></i><br>Nothing left to approve.</div></sc-if>
+      </div>
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:start">
+          <div style="background:#e9ecf1;border-radius:12px;padding:18px">
+            <div style="background:#fff;border-radius:4px;box-shadow:0 2px 10px rgba(20,23,31,0.10);padding:26px 24px;font-size:11.5px;color:#3a4250;min-height:420px;display:flex;flex-direction:column;gap:14px">
+              <div style="display:flex;justify-content:space-between;gap:10px"><div style="font-weight:700;font-size:15px;color:#14171f">{{ sel.supplier }}</div><div style="text-align:right;font-weight:600;letter-spacing:0.08em;color:#8a93a3">INVOICE</div></div>
+              <div style="display:flex;justify-content:space-between;gap:10px"><div>Bill to<br><b style="color:#14171f">Vale &amp; Hart Drinks B.V.</b><br>Waalhaven Z.z. 41, Rotterdam<br>NL862204117B01</div><div style="text-align:right">No. <span style="background:#fff3b0">{{ sel.no }}</span><br>Date <span style="background:#fff3b0">{{ sel.date }}</span><br>Due {{ sel.due }}</div></div>
+              <div style="border-top:1px solid #e4e7ec;padding-top:8px;display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ sel.lines }}" as="l" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:10px"><span><span style="background:#f1d5df">{{ l.d }}</span> × {{ l.q }}</span><span class="n">{{ l.src }}</span></div></sc-for>
+              </div>
+              <div style="margin-top:auto;border-top:1px solid #e4e7ec;padding-top:8px;display:flex;justify-content:space-between;font-weight:700;color:#14171f;font-size:13px"><span>Total</span><span class="n" style="background:#fff3b0">{{ sel.srcTotal }}</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:12.5px;color:#5b6474"><span><i class="ph ph-file-pdf"></i> {{ sel.file }}</span><span>Page 1 of 1</span></div>
+          </div>
+          <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="font-weight:600;font-size:16px">Booking proposal</div>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:#e6f6ee;color:#157347"><i class="ph ph-sparkle"></i>{{ sel.conf }} recognised</span>
+            </div>
+            <sc-if value="{{ sel.hasNote }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:10px;padding:10px 12px;border-radius:9px;background:#fff3dc;color:#7a4700;font-size:13px"><i class="ph ph-warning" style="font-size:18px;flex:none"></i><span>{{ sel.note }}</span></div>
+            </sc-if>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <sc-for list="{{ sel.fields }}" as="f" hint-placeholder-count="6">
+                <label style="display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:#5b6474;grid-column:{{ f.span }}">{{ f.label }}<input value="{{ f.value }}" readonly style="height:36px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:13.5px;color:#14171f;background:#fff;width:100%"></label>
+              </sc-for>
+            </div>
+            <div>
+              <div style="font-size:12.5px;color:#5b6474;margin-bottom:6px">Lines</div>
+              <div style="border:1px solid #e4e7ec;border-radius:9px;overflow:hidden">
+                <sc-for list="{{ sel.lines }}" as="l" hint-placeholder-count="2">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:9px 12px;border-bottom:1px solid #eef0f3;font-size:13px">
+                    <div style="font-weight:500">{{ l.d }}</div><div class="n" style="text-align:right;font-weight:600">{{ l.a }}</div>
+                    <div style="color:#5b6474;font-size:12.5px">{{ l.q }} × {{ l.p }}</div><div style="text-align:right;font-size:12.5px;color:#7a1f3d">{{ l.acct }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px">
+              <span style="color:#5b6474">VAT</span><span>{{ sel.vat }}</span>
+              <span style="color:#5b6474">Stock</span><span>{{ sel.stockTo }}</span>
+              <span style="color:#5b6474">Excise</span><span>{{ sel.excise }}</span>
+              <span style="color:#5b6474">Matched to</span><span>{{ sel.match }}</span>
+            </div>
+            <sc-if value="{{ selTodo }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:4px">
+                <button onClick="{{ approve }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-check" style="font-size:16px"></i>Approve &amp; book</button>
+                <button onClick="{{ approvePay }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8">Book &amp; schedule payment</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isExpenses }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.daily }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.expenses }}</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-car-simple" style="font-size:16px"></i>Log mileage</button>
+        <button onClick="{{ payClaims }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-hand-coins" style="font-size:16px"></i>Pay out claims</button>
+        <button onClick="{{ bookAllSuggested }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-checks" style="font-size:16px"></i>Book all suggested</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 18px;margin-bottom:16px;border-radius:12px;border:1.5px dashed #c4cbd6;background:#fff">
+      <div style="width:40px;height:40px;border-radius:10px;background:#f8e9ee;color:#7a1f3d;display:grid;place-items:center"><i class="ph ph-camera" style="font-size:21px"></i></div>
+      <div style="flex:1;min-width:240px"><div style="font-weight:600">Snap, drop or forward a receipt</div><div style="font-size:13px;color:#5b6474">Phone app · receipts@valehart.liquidledger.app · company card transactions arrive by themselves</div></div>
+      <button onClick="{{ addSampleReceipt }}" style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8">Try a sample receipt</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px">
+      <sc-for list="{{ expKpis }}" as="k" hint-placeholder-count="4">
+        <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">{{ k.label }}</div><div class="n" style="font-size:21px;font-weight:600">{{ k.value }}</div><div style="font-size:12.5px;color:#5b6474">{{ k.note }}</div></div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:16px;align-items:start">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden;min-width:0">
+        <div style="display:flex;gap:4px;padding:0 12px;border-bottom:1px solid #e4e7ec">
+          <sc-for list="{{ expTabs }}" as="t" hint-placeholder-count="2">
+            <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;padding:12px 10px;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}<span class="n" style="font-size:12px;padding:1px 7px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ t.count }}</span></button>
+          </sc-for>
+        </div>
+        <sc-for list="{{ expRows }}" as="r" hint-placeholder-count="5">
+          <button onClick="{{ r.pick }}" style="display:grid;grid-template-columns:52px minmax(0,1.2fr) minmax(0,1.2fr) 96px;gap:12px;align-items:center;width:100%;padding:11px 14px;border:0;border-bottom:1px solid #eef0f3;border-left:3px solid {{ r.edge }};background:{{ r.bg }};font:inherit;color:inherit;text-align:left;cursor:pointer">
+            <div style="font-size:12.5px;color:#5b6474">{{ r.date }}</div>
+            <div style="min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.supplier }}</div><div style="font-size:12.5px;color:#5b6474;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.what }}</div></div>
+            <div style="min-width:0">
+              <sc-if value="{{ r.hasCat }}" hint-placeholder-val="{{ true }}"><span style="display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:3px 9px;border-radius:7px;background:{{ r.chipBg }};border:{{ r.chipBorder }};font-size:12.5px"><i class="ph {{ r.icon }}" style="font-size:15px;color:#3a4250"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.catLabel }}</span><span class="n" style="color:#8a93a3">{{ r.acct }}</span></span></sc-if>
+              <sc-if value="{{ r.noCat }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:7px;background:#fff3dc;color:#9a5b00;font-size:12.5px;font-weight:500"><i class="ph ph-question" style="font-size:15px"></i>What was it for?</span></sc-if>
+            </div>
+            <div style="text-align:right"><div class="n" style="font-weight:600">{{ r.amountF }}</div><div style="font-size:12px;color:#5b6474;display:flex;gap:4px;align-items:center;justify-content:flex-end"><i class="ph {{ r.paidIcon }}"></i>{{ r.paidLabel }}</div></div>
+          </button>
+        </sc-for>
+        <sc-if value="{{ expEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:36px 14px;text-align:center;color:#5b6474;font-size:13px"><i class="ph ph-check-circle" style="font-size:26px;color:#157347"></i><br>All receipts are booked.</div></sc-if>
+      </div>
+
+      <sc-if value="{{ exHasSel }}" hint-placeholder-val="{{ true }}">
+        <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:16px;min-width:0">
+          <div style="display:flex;gap:14px;align-items:flex-start">
+            <div style="width:58px;height:76px;flex:none;border-radius:6px;border:1px solid #e4e7ec;background:repeating-linear-gradient(180deg,#f5f6f8 0 6px,#fff 6px 10px);display:grid;place-items:center;color:#8a93a3"><i class="ph ph-receipt" style="font-size:22px"></i></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:600;font-size:16px">{{ exSel.supplier }}</div>
+              <div style="font-size:13px;color:#5b6474">{{ exSel.what }}</div>
+              <div style="display:flex;gap:10px;align-items:baseline;margin-top:6px"><span class="n" style="font-size:20px;font-weight:600">{{ exSel.amountF }}</span><span style="font-size:12.5px;color:#5b6474">{{ exSel.date }} 2026 · incl. VAT</span></div>
+            </div>
+          </div>
+
+          <sc-if value="{{ exSelPayroll }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:10px;padding:10px 12px;border-radius:9px;background:#fcf5f7;color:#7a1f3d;font-size:13px"><i class="ph ph-users-three" style="font-size:18px;flex:none"></i><span>Imported from your payroll provider each month and split automatically over wages, social charges, pension and wage tax. Payslips stay in the payroll system.</span></div>
+          </sc-if>
+
+          <sc-if value="{{ exSelNormal }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+                <div style="font-weight:600">What was it for?</div>
+                <sc-if value="{{ exHasWhy }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:#5b6474;display:flex;gap:5px;align-items:center"><i class="ph ph-sparkle" style="color:#7a1f3d"></i>{{ exSel.why }}</div></sc-if>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;color:#8a93a3">
+                <i class="ph ph-magnifying-glass"></i><input value="{{ catQuery }}" onChange="{{ onCatQuery }}" placeholder="Type ‘lunch’, ‘taxi’, ‘toner’ or an account number like 4560" style="flex:1;min-width:0;border:0;outline:0;font:inherit;font-size:13.5px;color:#14171f;background:transparent">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:10px;max-height:340px;overflow-y:auto;padding-right:2px">
+                <sc-for list="{{ catGroups }}" as="g" hint-placeholder-count="3">
+                  <div>
+                    <div style="font-size:11.5px;font-weight:500;color:#8a93a3;margin-bottom:5px">{{ g.label }}</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px">
+                      <sc-for list="{{ g.cats }}" as="c" hint-placeholder-count="4">
+                        <button onClick="{{ c.pick }}" style="display:flex;gap:8px;align-items:flex-start;padding:7px 9px;border-radius:8px;border:1px solid {{ c.border }};background:{{ c.bg }};box-shadow:{{ c.ring }};font:inherit;text-align:left;cursor:pointer;color:#14171f" style-hover="border-color:#e3b8c6">
+                          <i class="ph {{ c.icon }}" style="font-size:17px;color:#3a4250;margin-top:1px"></i>
+                          <span style="min-width:0"><span style="display:block;font-size:13px;font-weight:500;line-height:1.25">{{ c.label }}</span><span class="n" style="display:block;font-size:11.5px;color:#8a93a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.acct }}</span></span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ exHasCat }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;padding:12px 14px;border-radius:9px;background:#f9fafb">
+                <span style="color:#5b6474">Ledger account</span><span class="n" style="font-weight:600">{{ exCat.acct }}</span>
+                <span style="color:#5b6474">VAT</span><span>{{ exCat.vat }}</span>
+                <sc-if value="{{ exCat.hasNote }}" hint-placeholder-val="{{ false }}"><span style="color:#5b6474">Good to know</span><span>{{ exCat.note }}</span></sc-if>
+              </div>
+            </sc-if>
+            <div>
+              <div style="font-size:12.5px;color:#5b6474;margin-bottom:6px">Paid with</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <sc-for list="{{ paidOpts }}" as="p" hint-placeholder-count="3">
+                  <button onClick="{{ p.pick }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:8px;border:1px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }};font:inherit;font-size:13px;font-weight:500;cursor:pointer"><i class="ph {{ p.icon }}"></i>{{ p.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ exHasCat }}" hint-placeholder-val="{{ false }}">
+              <label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" checked="{{ ruleOn }}" onChange="{{ toggleRule }}" style="width:16px;height:16px;accent-color:#7a1f3d">{{ ruleLabel }}</label>
+            </sc-if>
+          </sc-if>
+
+          <div>
+            <div style="font-size:12.5px;color:#5b6474;margin-bottom:6px">How it lands in the books</div>
+            <sc-if value="{{ exHasLines }}" hint-placeholder-val="{{ true }}">
+              <div style="border:1px solid #e4e7ec;border-radius:9px;overflow:hidden">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 92px 92px;gap:10px;padding:7px 12px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Account</div><div style="text-align:right">Debit</div><div style="text-align:right">Credit</div></div>
+                <sc-for list="{{ exLines }}" as="l" hint-placeholder-count="3">
+                  <div class="n" style="display:grid;grid-template-columns:minmax(0,1fr) 92px 92px;gap:10px;padding:8px 12px;font-size:13px;border-bottom:1px solid #f0f2f5"><span>{{ l.acct }}</span><span style="text-align:right">{{ l.dr }}</span><span style="text-align:right">{{ l.cr }}</span></div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ exNoLines }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;color:#8a93a3;padding:12px;border:1px dashed #d5d9e0;border-radius:9px">Pick a category to see the booking.</div></sc-if>
+          </div>
+          <sc-if value="{{ exCanBook }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ bookReceipt }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-check" style="font-size:16px"></i>Book receipt</button>
+          </sc-if>
+          <sc-if value="{{ exIsBooked }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#157347"><i class="ph ph-check-circle" style="font-size:18px"></i>Booked · changes are logged in the audit trail</div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRelations }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.daily }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.relations }}</h1></div>
+      <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>New relation</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="display:flex;gap:4px;padding:0 12px;border-bottom:1px solid #e4e7ec">
+        <sc-for list="{{ relTabs }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;padding:12px 10px;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}<span class="n" style="font-size:12px;padding:1px 7px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ t.count }}</span></button>
+        </sc-for>
+      </div>
+      <div style="overflow-x:auto"><div style="min-width:900px">
+        <div style="display:grid;grid-template-columns:minmax(0,1.5fr) 110px 170px minmax(0,1.3fr) 90px 120px;gap:14px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Name</div><div>Country</div><div>VAT number</div><div>Excise status</div><div>Terms</div><div style="text-align:right">Open balance</div></div>
+        <sc-for list="{{ relations }}" as="r" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:minmax(0,1.5fr) 110px 170px minmax(0,1.3fr) 90px 120px;gap:14px;padding:12px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3;cursor:pointer" style-hover="background:#fafbfc">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0"><div style="width:30px;height:30px;flex:none;border-radius:8px;background:#f0f2f5;display:grid;place-items:center;font-weight:600;font-size:12px;color:#3a4250">{{ r.ini }}</div><div style="min-width:0"><div style="font-weight:500">{{ r.name }}</div><div style="font-size:12.5px;color:#5b6474">{{ r.kind }}</div></div></div>
+            <div>{{ r.country }}</div>
+            <div class="n" style="font-size:13px;color:#3a4250">{{ r.vat }}</div>
+            <div style="font-size:13px;color:#3a4250">{{ r.excise }}</div>
+            <div style="color:#5b6474">{{ r.terms }}</div>
+            <div class="n" style="text-align:right;font-weight:600">{{ r.open }}</div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isProducts }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.trade }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.products }}</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-file-arrow-up" style="font-size:16px"></i>Import price list</button>
+        <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>New product</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;height:36px;padding:0 10px;width:min(320px,100%);background:#fff;border:1px solid #d5d9e0;border-radius:8px;color:#8a93a3"><i class="ph ph-magnifying-glass"></i><input value="{{ prodQ }}" onChange="{{ onProdQ }}" placeholder="Name, SKU, producer or EAN" style="flex:1;min-width:0;border:0;outline:0;font:inherit;font-size:13.5px;color:#14171f;background:transparent"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ prodCats }}" as="c" hint-placeholder-count="6">
+          <button onClick="{{ c.pick }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font:inherit;font-size:13px;font-weight:500;cursor:pointer">{{ c.label }}<span class="n" style="font-size:12px;opacity:0.7">{{ c.count }}</span></button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto"><div style="min-width:1180px">
+        <div style="display:grid;grid-template-columns:44px minmax(240px,2fr) 76px 104px 104px 56px 82px 76px 84px 60px 90px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div></div><div>Product</div><div>SKU</div><div>Category</div><div>Size · ABV</div><div style="text-align:right">Case</div><div style="text-align:right">In stock</div><div style="text-align:right">Cost</div><div style="text-align:right">List price</div><div style="text-align:right">Margin</div><div style="text-align:right">Excise / btl</div></div>
+        <sc-for list="{{ prodRows }}" as="p" hint-placeholder-count="9">
+          <button onClick="{{ p.open }}" class="n" style="display:grid;grid-template-columns:44px minmax(240px,2fr) 76px 104px 104px 56px 82px 76px 84px 60px 90px;gap:12px;padding:10px 16px;align-items:center;width:100%;border:0;border-bottom:1px solid #eef0f3;background:#fff;font:inherit;font-size:13.5px;color:inherit;text-align:left;cursor:pointer" style-hover="background:#fcf5f7">
+            <div style="width:36px;height:36px;border-radius:8px;background:{{ p.tileBg }};color:{{ p.tileFg }};display:grid;place-items:center"><i class="ph {{ p.icon }}" style="font-size:19px"></i></div>
+            <div style="min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.name }}</div><div style="font-size:12.5px;color:#5b6474">{{ p.producer }} · {{ p.origin }}</div></div>
+            <div style="font-size:12.5px;color:#5b6474">{{ p.sku }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:{{ p.tileBg }};color:{{ p.tileFg }}">{{ p.cat }}</span></div>
+            <div style="color:#3a4250">{{ p.sizeAbv }}</div>
+            <div style="text-align:right;color:#5b6474">× {{ p.caseOf }}</div>
+            <div style="text-align:right;font-weight:500;color:{{ p.stockColor }}">{{ p.stock }}</div>
+            <div style="text-align:right">{{ p.cost }}</div>
+            <div style="text-align:right;font-weight:600">{{ p.price }}</div>
+            <div style="text-align:right;color:#157347">{{ p.margin }}</div>
+            <div style="text-align:right;color:#5b6474">{{ p.excise }}</div>
+          </button>
+        </sc-for>
+        <sc-if value="{{ prodEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:36px;text-align:center;color:#5b6474">No products match your search.</div></sc-if>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStock }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.trade }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.stock }}</h1></div>
+      <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-arrows-left-right" style="font-size:16px"></i>Move stock</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px">
+      <sc-for list="{{ warehouses }}" as="w" hint-placeholder-count="3">
+        <button onClick="{{ w.pick }}" style="text-align:left;font:inherit;color:inherit;cursor:pointer;background:#fff;border:1px solid {{ w.border }};box-shadow:{{ w.ring }};border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-weight:600">{{ w.name }}</span><span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:{{ w.tagBg }};color:{{ w.tagFg }}">{{ w.kind }}</span></div>
+          <div class="n" style="font-size:21px;font-weight:600">{{ w.bottles }} <span style="font-size:13px;font-weight:400;color:#5b6474">bottles</span></div>
+          <div class="n" style="font-size:12.5px;color:#5b6474">{{ w.value }} at cost · {{ w.excise }}</div>
+        </button>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto"><div style="min-width:980px">
+        <div style="display:grid;grid-template-columns:90px minmax(0,2fr) 110px 60px 90px 90px 100px 110px 110px 90px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>SKU</div><div>Product</div><div>Category</div><div style="text-align:right">ABV</div><div style="text-align:right">Bottles</div><div style="text-align:right">Litres</div><div style="text-align:right">Pure alc. L</div><div style="text-align:right">{{ whExciseLabel }}</div><div style="text-align:right">Cost value</div><div></div></div>
+        <sc-for list="{{ stockRows }}" as="r" hint-placeholder-count="7">
+          <div class="n" style="display:grid;grid-template-columns:90px minmax(0,2fr) 110px 60px 90px 90px 100px 110px 110px 90px;gap:12px;padding:12px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3" style-hover="background:#fafbfc">
+            <div style="color:#5b6474;font-size:12.5px">{{ r.sku }}</div><div style="font-weight:500">{{ r.name }}</div><div style="color:#5b6474">{{ r.cat }}</div>
+            <div style="text-align:right">{{ r.abv }}</div><div style="text-align:right;font-weight:600">{{ r.bottles }}</div><div style="text-align:right">{{ r.litres }}</div><div style="text-align:right">{{ r.lpa }}</div><div style="text-align:right">{{ r.excise }}</div><div style="text-align:right">{{ r.value }}</div>
+            <div><sc-if value="{{ r.low }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:#fff3dc;color:#9a5b00">Low</span></sc-if></div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isExcise }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.trade }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.excise }}</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-download-simple" style="font-size:16px"></i>Export</button>
+        <button onClick="{{ fileExcise }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph {{ excIcon }}" style="font-size:16px"></i>{{ excLabel }}</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Excise due · September</div><div class="n" style="font-size:21px;font-weight:600">{{ exciseTotal }}</div><div style="font-size:12.5px;color:#5b6474">Pay by 31 Oct 2026</div></div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Released for consumption</div><div class="n" style="font-size:21px;font-weight:600">{{ releasedBottles }} btl</div><div style="font-size:12.5px;color:#5b6474">From Rotterdam bonded</div></div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Shipped duty-suspended</div><div class="n" style="font-size:21px;font-weight:600">8,400 btl</div><div style="font-size:12.5px;color:#5b6474">EU & export · no Dutch excise</div></div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px 16px"><div style="font-size:13px;color:#5b6474">Excise licence</div><div class="n" style="font-size:16px;font-weight:600;margin-top:4px">NL00000412E7731</div><div style="font-size:12.5px;color:#5b6474">Authorised warehousekeeper</div></div>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden;margin-bottom:20px">
+      <div style="padding:14px 16px;font-weight:600;font-size:15px;border-bottom:1px solid #e4e7ec">September return · calculated per product</div>
+      <div style="overflow-x:auto"><div style="min-width:860px">
+        <div style="display:grid;grid-template-columns:minmax(0,2fr) 120px 90px 90px minmax(0,1.6fr) 120px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Product</div><div>Category</div><div style="text-align:right">Bottles</div><div style="text-align:right">Hectolitre</div><div>Calculation</div><div style="text-align:right">Excise</div></div>
+        <sc-for list="{{ exciseRows }}" as="r" hint-placeholder-count="7">
+          <div class="n" style="display:grid;grid-template-columns:minmax(0,2fr) 120px 90px 90px minmax(0,1.6fr) 120px;gap:12px;padding:11px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3">
+            <div style="font-weight:500">{{ r.name }}</div><div style="color:#5b6474">{{ r.cat }}</div><div style="text-align:right">{{ r.bottles }}</div><div style="text-align:right">{{ r.hl }}</div><div style="font-size:12.5px;color:#5b6474">{{ r.basis }}</div><div style="text-align:right;font-weight:600">{{ r.duty }}</div>
+          </div>
+        </sc-for>
+        <div class="n" style="display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:12px;padding:13px 16px;font-size:14.5px;font-weight:600;background:#f9fafb"><div>Total</div><div style="text-align:right">{{ exciseTotal }}</div></div>
+      </div></div>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 16px;font-weight:600;font-size:15px;border-bottom:1px solid #e4e7ec">Customs &amp; EMCS documents</div>
+      <div style="overflow-x:auto"><div style="min-width:820px">
+        <div style="display:grid;grid-template-columns:160px minmax(0,1.5fr) minmax(0,1.4fr) 200px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Document</div><div>Reference</div><div>Shipment</div><div>Status</div></div>
+        <sc-for list="{{ customsDocs }}" as="c" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:160px minmax(0,1.5fr) minmax(0,1.4fr) 200px;gap:12px;padding:12px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3">
+            <div style="font-weight:500">{{ c.type }}</div><div class="n" style="font-size:13px;color:#3a4250">{{ c.ref }}</div><div>{{ c.shipment }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }}">{{ c.status }}</span></div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isShipments }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.trade }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.shipments }}</h1></div>
+      <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>New order</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto"><div style="min-width:1000px">
+        <div style="display:grid;grid-template-columns:90px 80px minmax(0,1.3fr) minmax(0,1.5fr) 80px 230px 170px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Ref</div><div>Type</div><div>Route</div><div>Goods</div><div>ETA</div><div>Progress</div><div></div></div>
+        <sc-for list="{{ ships }}" as="s" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:90px 80px minmax(0,1.3fr) minmax(0,1.5fr) 80px 230px 170px;gap:12px;padding:12px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3" style-hover="background:#fafbfc">
+            <div class="n" style="color:#7a1f3d;font-weight:500">{{ s.ref }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:{{ s.bg }};color:{{ s.fg }}">{{ s.dir }}</span></div>
+            <div style="min-width:0"><div style="font-weight:500">{{ s.route }}</div><div style="font-size:12.5px;color:#5b6474">{{ s.mode }}</div></div>
+            <div style="color:#3a4250">{{ s.goods }}</div>
+            <div class="n" style="color:#5b6474">{{ s.eta }}</div>
+            <div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px"><sc-for list="{{ s.bars }}" as="b" hint-placeholder-count="4"><div style="height:6px;border-radius:999px;background:{{ b.c }}"></div></sc-for></div>
+              <div style="font-size:12.5px;margin-top:5px;color:{{ s.stageColor }}">{{ s.stage }}</div>
+            </div>
+            <div style="text-align:right"><sc-if value="{{ s.hasAction }}" hint-placeholder-val="{{ false }}"><button onClick="{{ s.act }}" style="display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 10px;border-radius:7px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:13px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-upload-simple"></i>{{ s.action }}</button></sc-if></div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isVat }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.accounting }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.vatTitle }}</h1></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12.5px;font-weight:500;padding:3px 9px;border-radius:999px;background:#f0f2f5;color:#3a4250">Netherlands · Jul–Sep</span>
+        <button onClick="{{ fileVat }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph {{ vatIcon }}" style="font-size:16px"></i>{{ vatLabel }}</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;align-items:start">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden;grid-column:span 2;min-width:0">
+        <div style="display:grid;grid-template-columns:46px minmax(0,1fr) 130px 120px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Box</div><div>Description</div><div style="text-align:right">Turnover</div><div style="text-align:right">VAT</div></div>
+        <sc-for list="{{ vatRows }}" as="v" hint-placeholder-count="10">
+          <div class="n" style="display:grid;grid-template-columns:46px minmax(0,1fr) 130px 120px;gap:12px;padding:{{ v.pad }};align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3;background:{{ v.bg }};font-weight:{{ v.w }}">
+            <div style="color:#5b6474">{{ v.box }}</div><div>{{ v.label }}</div><div style="text-align:right">{{ v.base }}</div><div style="text-align:right">{{ v.vat }}</div>
+          </div>
+        </sc-for>
+        <div class="n" style="display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:12px;padding:14px 16px;font-size:15px;font-weight:600;background:#f8e9ee;color:#7a1f3d"><div>To pay · by 31 October 2026</div><div style="text-align:right">€9,846.20</div></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px;margin-top:16px">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:16px 18px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:4px">Intra-EU listing (ICP)</div>
+        <div style="font-size:13px;color:#5b6474;margin-bottom:10px">Supplies to EU businesses in box 3b, filed alongside.</div>
+        <sc-for list="{{ icp }}" as="c" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #f0f2f5;font-size:13.5px"><span>{{ c.name }} <span class="n" style="color:#5b6474;font-size:12.5px">{{ c.vat }}</span></span><span class="n" style="font-weight:500">{{ c.amt }}</span></div></sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:16px 18px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:10px">Checks before filing</div>
+        <sc-for list="{{ vatChecks }}" as="c" hint-placeholder-count="4"><div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:13.5px"><i class="ph {{ c.icon }}" style="font-size:18px;color:{{ c.color }};flex:none"></i><span>{{ c.label }}</span></div></sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isLedger }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.accounting }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.ledger }}</h1></div>
+      <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>Journal entry</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));gap:16px;align-items:start">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;font-weight:600;font-size:15px;border-bottom:1px solid #e4e7ec">Chart of accounts · balance 7 Oct</div>
+        <sc-for list="{{ coa }}" as="g" hint-placeholder-count="4">
+          <div>
+            <div style="padding:8px 16px;font-size:12px;font-weight:600;color:#5b6474;background:#f9fafb;border-bottom:1px solid #eef0f3;display:flex;justify-content:space-between"><span>{{ g.label }}</span><span class="n">{{ g.total }}</span></div>
+            <sc-for list="{{ g.rows }}" as="a" hint-placeholder-count="3">
+              <div class="n" style="display:grid;grid-template-columns:56px minmax(0,1fr) 120px;gap:12px;padding:9px 16px;font-size:13.5px;border-bottom:1px solid #f0f2f5;cursor:pointer" style-hover="background:#fafbfc"><span style="color:#5b6474">{{ a.code }}</span><span style="min-width:0">{{ a.name }} <span style="color:#8a93a3;font-size:12.5px">{{ a.sub }}</span></span><span style="text-align:right;font-weight:500">{{ a.bal }}</span></div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+        <div style="padding:14px 16px;font-weight:600;font-size:15px;border-bottom:1px solid #e4e7ec">Latest journal entries</div>
+        <sc-for list="{{ journal }}" as="j" hint-placeholder-count="5">
+          <div style="padding:12px 16px;border-bottom:1px solid #eef0f3">
+            <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px"><span style="font-weight:500">{{ j.title }}</span><span style="font-size:12.5px;color:#5b6474">{{ j.date }} · {{ j.src }}</span></div>
+            <sc-for list="{{ j.lines }}" as="l" hint-placeholder-count="2">
+              <div class="n" style="display:grid;grid-template-columns:minmax(0,1fr) 100px 100px;gap:10px;font-size:13px;color:#3a4250;padding:2px 0"><span>{{ l.acct }}</span><span style="text-align:right">{{ l.dr }}</span><span style="text-align:right">{{ l.cr }}</span></div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">{{ t.accounting }}</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">{{ t.reports }}</h1></div>
+      <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-download-simple" style="font-size:16px"></i>Export for accountant</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="display:flex;gap:4px;padding:0 12px;border-bottom:1px solid #e4e7ec">
+        <sc-for list="{{ repTabs }}" as="t" hint-placeholder-count="2">
+          <button onClick="{{ t.pick }}" style="padding:12px 10px;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ repPL }}" hint-placeholder-val="{{ true }}">
+        <div style="overflow-x:auto"><div style="min-width:640px">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 120px 120px 80px 130px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div></div><div style="text-align:right">Sep 2026</div><div style="text-align:right">Aug 2026</div><div style="text-align:right">Change</div><div style="text-align:right">Year to date</div></div>
+          <sc-for list="{{ pl }}" as="r" hint-placeholder-count="8">
+            <div class="n" style="display:grid;grid-template-columns:minmax(0,1fr) 120px 120px 80px 130px;gap:12px;padding:11px 16px;font-size:13.5px;border-bottom:1px solid #eef0f3;font-weight:{{ r.w }};background:{{ r.bg }}">
+              <div>{{ r.label }}</div><div style="text-align:right">{{ r.sep }}</div><div style="text-align:right;color:#5b6474">{{ r.aug }}</div><div style="text-align:right;color:{{ r.dc }}">{{ r.delta }}</div><div style="text-align:right">{{ r.ytd }}</div>
+            </div>
+          </sc-for>
+        </div></div>
+        <div style="padding:12px 16px;font-size:12.5px;color:#5b6474;display:flex;gap:8px;align-items:center"><i class="ph ph-info"></i>Excise charged to customers (€16,037 in Sep) is passed through to Customs and kept out of revenue.</div>
+      </sc-if>
+      <sc-if value="{{ repBS }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))">
+          <sc-for list="{{ bs }}" as="side" hint-placeholder-count="2">
+            <div style="border-right:1px solid #eef0f3">
+              <div style="padding:10px 16px;font-size:12px;font-weight:600;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec">{{ side.label }}</div>
+              <sc-for list="{{ side.rows }}" as="r" hint-placeholder-count="5"><div class="n" style="display:flex;justify-content:space-between;gap:10px;padding:10px 16px;font-size:13.5px;border-bottom:1px solid #f0f2f5"><span>{{ r.l }}</span><span>{{ r.v }}</span></div></sc-for>
+              <div class="n" style="display:flex;justify-content:space-between;padding:12px 16px;font-weight:600;font-size:14.5px"><span>Total</span><span>{{ side.total }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  </main>
+</div>
+</div>
+
+<sc-if value="{{ drawerOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeDrawer }}" style="position:fixed;inset:0;z-index:40;background:rgba(20,23,31,0.32)"></div>
+  <div style="position:fixed;top:0;right:0;bottom:0;z-index:41;width:min(780px,100vw);background:#fff;box-shadow:-12px 0 40px rgba(20,23,31,0.16);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;border-bottom:1px solid #e4e7ec">
+      <div><div style="font-weight:600;font-size:18px">New sales invoice</div><div class="n" style="font-size:13px;color:#5b6474">{{ nextNo }} · 7 Oct 2026 · due 21 Oct</div></div>
+      <button onClick="{{ closeDrawer }}" aria-label="Close" style="width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-x" style="font-size:18px"></i></button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px">
+      <div>
+        <div style="font-size:12.5px;color:#5b6474;margin-bottom:6px">Customer</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+          <sc-for list="{{ customers }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.pick }}" style="text-align:left;padding:9px 12px;border-radius:9px;border:1px solid {{ c.border }};background:{{ c.bg }};box-shadow:{{ c.ring }};font:inherit;cursor:pointer;color:#14171f"><div style="font-weight:600;font-size:13.5px">{{ c.name }}</div><div style="font-size:12px;color:#5b6474">{{ c.city }}</div></button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:9px;background:#fcf5f7;font-size:13px;color:#7a1f3d"><i class="ph ph-info" style="font-size:18px;flex:none"></i><span>{{ regimeNote }}</span></div>
+      </div>
+      <div>
+        <div style="font-size:12.5px;color:#5b6474;margin-bottom:6px">Lines</div>
+        <div style="border:1px solid #e4e7ec;border-radius:10px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(0,2fr) 70px 90px 100px 110px 30px;gap:10px;padding:8px 12px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Product</div><div>Cases</div><div>€ / btl</div><div style="text-align:right">Net</div><div style="text-align:right">Excise</div><div></div></div>
+          <sc-for list="{{ lines }}" as="l" hint-placeholder-count="2">
+            <div style="display:grid;grid-template-columns:minmax(0,2fr) 70px 90px 100px 110px 30px;gap:10px;padding:10px 12px;align-items:start;border-bottom:1px solid #eef0f3">
+              <div style="min-width:0">{{ l.select }}<div style="font-size:12px;color:#5b6474;margin-top:4px">{{ l.desc }}</div></div>
+              <input class="n" type="number" min="0" value="{{ l.cases }}" onChange="{{ l.onCases }}" style="height:34px;padding:0 8px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:13.5px;width:100%">
+              <input class="n" type="text" inputmode="decimal" value="{{ l.price }}" onChange="{{ l.onPrice }}" style="height:34px;padding:0 8px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:13.5px;width:100%">
+              <div class="n" style="text-align:right;padding-top:8px;font-size:13.5px">{{ l.netF }}</div>
+              <div style="text-align:right;padding-top:8px"><div class="n" style="font-size:13.5px">{{ l.exciseF }}</div><div style="font-size:11px;color:#5b6474;line-height:1.3">{{ l.formula }}</div></div>
+              <button onClick="{{ l.remove }}" aria-label="Remove line" style="width:30px;height:34px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;cursor:pointer;color:#8a93a3" style-hover="background:#f3f5f8;color:#b42318"><i class="ph ph-trash"></i></button>
+            </div>
+          </sc-for>
+          <button onClick="{{ addLine }}" style="display:flex;align-items:center;gap:6px;width:100%;padding:10px 12px;border:0;background:#fff;font:inherit;font-size:13.5px;font-weight:500;color:#7a1f3d;cursor:pointer;text-align:left" style-hover="background:#fcf5f7"><i class="ph ph-plus"></i>Add line</button>
+        </div>
+      </div>
+      <div class="n" style="align-self:flex-end;display:grid;grid-template-columns:auto 130px;gap:6px 24px;font-size:14px;min-width:300px">
+        <span style="color:#5b6474">Net</span><span style="text-align:right">{{ tNet }}</span>
+        <span style="color:#5b6474">Excise</span><span style="text-align:right">{{ tExcise }}</span>
+        <span style="color:#5b6474">{{ vatLine }}</span><span style="text-align:right">{{ tVat }}</span>
+        <span style="font-weight:600;font-size:17px;padding-top:8px;border-top:1px solid #e4e7ec">Total</span><span style="text-align:right;font-weight:600;font-size:17px;padding-top:8px;border-top:1px solid #e4e7ec">{{ tTotal }}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:14px 24px;border-top:1px solid #e4e7ec">
+      <button onClick="{{ closeDrawer }}" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8">Save draft</button>
+      <button onClick="{{ sendInvoice }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-paper-plane-tilt" style="font-size:16px"></i>Send invoice</button>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ prodOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeProd }}" style="position:fixed;inset:0;z-index:40;background:rgba(20,23,31,0.32)"></div>
+  <div style="position:fixed;top:0;right:0;bottom:0;z-index:41;width:min(660px,100vw);background:#fff;box-shadow:-12px 0 40px rgba(20,23,31,0.16);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:18px 24px;border-bottom:1px solid #e4e7ec">
+      <div style="width:60px;height:78px;flex:none;border-radius:8px;border:1.5px dashed #d5d9e0;background:#fafbfc;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#8a93a3;font-size:10px"><i class="ph ph-image" style="font-size:20px"></i>Photo</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:18px;line-height:1.25">{{ pd.name }}</div>
+        <div style="font-size:13px;color:#5b6474;margin-top:2px">{{ pd.producer }} · {{ pd.origin }}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:{{ pd.tileBg }};color:{{ pd.tileFg }}">{{ pd.cat }}</span>
+          <span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:#e6f6ee;color:#157347">Active</span>
+          <span class="n" style="font-size:12px;padding:2px 8px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ pd.sku }}</span>
+        </div>
+      </div>
+      <button onClick="{{ closeProd }}" aria-label="Close" style="width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-x" style="font-size:18px"></i></button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:22px">
+      <div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:10px">Product &amp; customs data</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px 18px">
+          <sc-for list="{{ pd.facts }}" as="f" hint-placeholder-count="9">
+            <div><div style="font-size:12px;color:#5b6474">{{ f.l }}</div><div class="n" style="font-size:14px;font-weight:500">{{ f.v }}</div></div>
+          </sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:8px">Price lists</div>
+        <div style="border:1px solid #e4e7ec;border-radius:10px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) 100px 100px 80px;gap:10px;padding:8px 12px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>List</div><div style="text-align:right">Per bottle</div><div style="text-align:right">Per case</div><div style="text-align:right">Margin</div></div>
+          <sc-for list="{{ pd.lists }}" as="l" hint-placeholder-count="3">
+            <div class="n" style="display:grid;grid-template-columns:minmax(0,1fr) 100px 100px 80px;gap:10px;padding:9px 12px;font-size:13.5px;border-bottom:1px solid #f0f2f5"><span>{{ l.name }}</span><span style="text-align:right;font-weight:500">{{ l.btl }}</span><span style="text-align:right">{{ l.cs }}</span><span style="text-align:right;color:#157347">{{ l.m }}</span></div>
+          </sc-for>
+          <div class="n" style="display:flex;justify-content:space-between;padding:9px 12px;font-size:12.5px;color:#5b6474;background:#fafbfc"><span>Cost price (last purchase, landed)</span><span>{{ pd.cost }}</span></div>
+        </div>
+        <div style="font-size:12px;color:#5b6474;margin-top:6px">Prices excl. VAT, excise and deposit. These are added on the invoice per customer.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+        <div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px">Excise &amp; deposit</div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13.5px;padding:12px 14px;border-radius:10px;background:#fcf5f7">
+            <span style="color:#5b6474">Per bottle</span><span class="n" style="font-weight:600;text-align:right">{{ pd.exBtl }}</span>
+            <span style="color:#5b6474">Per case</span><span class="n" style="text-align:right">{{ pd.exCase }}</span>
+            <span style="color:#5b6474">Deposit</span><span class="n" style="text-align:right">{{ pd.deposit }}</span>
+            <span style="grid-column:span 2;font-size:12px;color:#7a1f3d">{{ pd.exFormula }}</span>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px">Stock</div>
+          <sc-for list="{{ pd.stock }}" as="s" hint-placeholder-count="3">
+            <div class="n" style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f0f2f5;font-size:13.5px"><span>{{ s.l }}</span><span style="font-weight:500">{{ s.v }}</span></div>
+          </sc-for>
+          <div style="font-size:12.5px;color:{{ pd.reorderColor }};margin-top:6px">{{ pd.reorder }}</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:8px">Last 90 days</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div style="padding:12px;border:1px solid #e4e7ec;border-radius:10px"><div style="font-size:12px;color:#5b6474">Sold</div><div class="n" style="font-size:18px;font-weight:600">{{ pd.sold }}</div></div>
+          <div style="padding:12px;border:1px solid #e4e7ec;border-radius:10px"><div style="font-size:12px;color:#5b6474">Revenue</div><div class="n" style="font-size:18px;font-weight:600">{{ pd.rev }}</div></div>
+          <div style="padding:12px;border:1px solid #e4e7ec;border-radius:10px"><div style="font-size:12px;color:#5b6474">Top customer</div><div style="font-size:14px;font-weight:600;margin-top:3px">{{ pd.top }}</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;padding:14px 24px;border-top:1px solid #e4e7ec">
+      <button onClick="{{ notInProto }}" style="height:36px;padding:0 12px;border-radius:8px;border:0;background:transparent;color:#b42318;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#fdebea">Archive</button>
+      <div style="display:flex;gap:8px">
+        <button onClick="{{ notInProto }}" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8">Duplicate</button>
+        <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-pencil-simple" style="font-size:16px"></i>Edit product</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;padding:12px 16px;background:#14171f;color:#fff;border-radius:10px;box-shadow:0 12px 32px rgba(20,23,31,0.25);font-size:14px;max-width:min(560px,calc(100vw - 48px))">
+    <i class="ph ph-check-circle" style="font-size:20px;color:#5fd39a"></i>{{ toast }}
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;dashboard&quot;,&quot;bank&quot;,&quot;sales&quot;,&quot;purchases&quot;,&quot;expenses&quot;,&quot;relations&quot;,&quot;products&quot;,&quot;stock&quot;,&quot;excise&quot;,&quot;shipments&quot;,&quot;vat&quot;,&quot;ledger&quot;,&quot;reports&quot;],&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;language&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;NL&quot;,&quot;EN&quot;,&quot;FR&quot;,&quot;DE&quot;,&quot;IT&quot;,&quot;ES&quot;,&quot;PL&quot;],&quot;default&quot;:&quot;EN&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;sidebar&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Full&quot;,&quot;Icons only&quot;],&quot;default&quot;:&quot;Full&quot;,&quot;tsType&quot;:&quot;'Full'|'Icons only'&quot;},&quot;ledgerNames&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Dutch&quot;,&quot;English&quot;],&quot;default&quot;:&quot;Dutch&quot;,&quot;tsType&quot;:&quot;'Dutch'|'English'&quot;}}">
+class Component extends DCLogic {
+  static R = { beer: 9.10, wine: 98, fortified: 182, spirits: 1991 };
+  static CAT = { beer: 'Beer', wine: 'Still wine', fortified: 'Fortified wine', spirits: 'Spirits', water: 'Water', soft: 'Soft drink' };
+  static P = {
+    rioja:  { sku: 'WN-1021', name: 'Altamira Rioja Crianza 2021', cat: 'wine', size: 0.75, abv: 13.5, caseOf: 6, cost: 5.70, price: 9.80, reorder: 1000 },
+    rhone:  { sku: 'WN-1044', name: 'Domaine Sauvage Côtes du Rhône 2022', cat: 'wine', size: 0.75, abv: 14, caseOf: 6, cost: 6.20, price: 10.50 },
+    tripel: { sku: 'BR-2003', name: 'De Kroon Tripel', cat: 'beer', size: 0.33, abv: 8.5, caseOf: 24, cost: 0.95, price: 1.85 },
+    helles: { sku: 'BR-2011', name: 'Hopfenhaus Helles', cat: 'beer', size: 0.5, abv: 4.9, caseOf: 20, cost: 0.78, price: 1.45 },
+    glen:   { sku: 'SP-3012', name: 'Glen Arrow 12 Single Malt', cat: 'spirits', size: 0.7, abv: 40, caseOf: 6, cost: 19.40, price: 34.00 },
+    mezcal: { sku: 'SP-3030', name: 'Casa Lume Mezcal Espadín', cat: 'spirits', size: 0.7, abv: 42, caseOf: 6, cost: 15.80, price: 29.50, reorder: 600 },
+    port:   { sku: 'FW-4002', name: 'Vinha Velha Tawny 10 Years', cat: 'fortified', size: 0.75, abv: 20, caseOf: 6, cost: 8.90, price: 16.00 },
+    water:  { sku: 'NA-5001', name: 'Fonte Chiara Sparkling Water', cat: 'water', size: 0.5, abv: 0, caseOf: 24, cost: 0.38, price: 0.95 },
+    soda:   { sku: 'NA-5010', name: 'Lumo Ginger Soda (can)', cat: 'soft', size: 0.33, abv: 0, caseOf: 24, cost: 0.41, price: 1.10, reorder: 3000 },
+  };
+  static PX = {
+    rioja: { producer: 'Bodegas Altamira', origin: 'Rioja, Spain', vintage: '2021', ean: '8410023100217', cn: '2204 21', emcs: 'W200 · Still wine', pallet: 100, lists: [['Horeca', 9.80], ['Wholesale', 8.40], ['Export', 7.60]], deposit: 0, sold: 4920, rev: 47210, top: 'Hotel Meridiaan' },
+    rhone: { producer: 'Domaine Sauvage', origin: 'Rhône, France', vintage: '2022', ean: '3760154220446', cn: '2204 21', emcs: 'W200 · Still wine', pallet: 100, lists: [['Horeca', 10.50], ['Wholesale', 9.10], ['Export', 8.30]], deposit: 0, sold: 2380, rev: 23870, top: 'Nordvin AB' },
+    tripel: { producer: 'Brouwerij De Kroon', origin: 'Flanders, Belgium', plato: '18.5 °P', ean: '5411081200039', cn: '2203 00', emcs: 'B000 · Beer', pallet: 70, lists: [['Horeca', 1.85], ['Wholesale', 1.55], ['Export', 1.40]], deposit: 0.10, sold: 7400, rev: 12950, top: 'Bar Kade 12' },
+    helles: { producer: 'Hopfenhaus', origin: 'Bavaria, Germany', plato: '11.8 °P', ean: '4006781201100', cn: '2203 00', emcs: 'B000 · Beer', pallet: 60, lists: [['Horeca', 1.45], ['Wholesale', 1.20], ['Export', 1.10]], deposit: 0.10, sold: 13800, rev: 18630, top: 'Café Rosa' },
+    glen: { producer: 'Glen Arrow Distillers', origin: 'Speyside, Scotland', vintage: '12 years', ean: '5010327301207', cn: '2208 30', emcs: 'S200 · Spirits', pallet: 80, lists: [['Horeca', 34.00], ['Wholesale', 29.50], ['Export', 26.00]], deposit: 0, sold: 1310, rev: 41900, top: 'Lagos Fine Spirits' },
+    mezcal: { producer: 'Distilería Casa Lume', origin: 'Oaxaca, Mexico', ean: '7503027310306', cn: '2208 90', emcs: 'S200 · Spirits', pallet: 80, lists: [['Horeca', 29.50], ['Wholesale', 25.00], ['Export', 22.50]], deposit: 0, sold: 980, rev: 26410, top: 'Café Rosa' },
+    port: { producer: 'Vinha Velha', origin: 'Douro, Portugal', vintage: '10 years', ean: '5601012400023', cn: '2204 21', emcs: 'I000 · Intermediate', pallet: 100, lists: [['Horeca', 16.00], ['Wholesale', 13.80], ['Export', 12.50]], deposit: 0, sold: 720, rev: 10840, top: 'Wijnkoperij Dumont' },
+    water: { producer: 'Fonte Chiara', origin: 'Piemonte, Italy', ean: '8002270500011', cn: '2201 10', emcs: 'Not excise goods', pallet: 84, lists: [['Horeca', 0.95], ['Wholesale', 0.72], ['Export', 0.65]], deposit: 0.15, sold: 9600, rev: 8640, top: 'Hotel Meridiaan' },
+    soda: { producer: 'Lumo Drinks', origin: 'Utrecht, Netherlands', ean: '8719325400330', cn: '2202 10', emcs: 'Not excise goods', pallet: 120, lists: [['Horeca', 1.10], ['Wholesale', 0.85], ['Export', 0.78]], deposit: 0.15, sold: 14400, rev: 14980, top: 'Café Rosa' },
+  };
+  static PSTYLE = { wine: ['#f8e9ee', '#7a1f3d', 'ph-wine'], fortified: ['#f8e9ee', '#7a1f3d', 'ph-wine'], beer: ['#fff3dc', '#9a5b00', 'ph-beer-stein'], spirits: ['#f3ece4', '#6b4a2b', 'ph-brandy'], water: ['#e8f0fb', '#1f4f8f', 'ph-drop'], soft: ['#e6f6ee', '#157347', 'ph-pint-glass'] };
+  static CUST = {
+    rosa: { name: 'Café Rosa', city: 'Amsterdam, NL', regime: 'domestic' },
+    meridiaan: { name: 'Hotel Meridiaan', city: 'Utrecht, NL', regime: 'domestic' },
+    nordvin: { name: 'Nordvin AB', city: 'Stockholm, SE', regime: 'eu' },
+    lagos: { name: 'Lagos Fine Spirits', city: 'Lagos, NG', regime: 'export' },
+  };
+  static NOTE = {
+    domestic: 'Dutch customer — excise is added per bottle from volume and alcohol %. VAT 21% is charged over price plus excise.',
+    eu: 'EU business — ships duty-suspended under EMCS, so no Dutch excise. VAT reverse-charged (box 3b). The e-AD is drafted when you send.',
+    export: 'Outside the EU — no excise, 0% VAT (box 3a). The export declaration is drafted when you send.',
+  };
+  static RELEASES = { helles: 4800, tripel: 2400, rioja: 3600, rhone: 1800, port: 600, glen: 960, mezcal: 720 };
+  static CATS = {
+    office: { label: 'Office supplies', acct: '4500', en: 'Office supplies', nl: 'Kantoorbenodigdheden', icon: 'ph-paperclip', g: 'Office & IT', rate: 21, reclaim: true, kw: 'paper toner ink pens printer stationery staples' },
+    software: { label: 'Software & subscriptions', acct: '4520', en: 'Software & IT', nl: 'Automatiseringskosten', icon: 'ph-laptop', g: 'Office & IT', rate: 21, reclaim: true, kw: 'saas licence adobe microsoft google computer' },
+    postage: { label: 'Postage & couriers', acct: '4540', en: 'Postage & couriers', nl: 'Porti- en koerierskosten', icon: 'ph-envelope-simple', g: 'Office & IT', rate: 21, reclaim: true, kw: 'postnl dhl ups stamps parcel' },
+    phone: { label: 'Phone & internet', acct: '4610', en: 'Phone & internet', nl: 'Telefoon- en internetkosten', icon: 'ph-phone', g: 'Office & IT', rate: 21, reclaim: true, kw: 'kpn vodafone mobile' },
+    wages: { label: 'Wages & payroll', acct: '4000', en: 'Wages & salaries', nl: 'Lonen en salarissen', icon: 'ph-users-three', g: 'People', rate: 0, reclaim: false, vat: 'No VAT', kw: 'salary payroll loon' },
+    staff: { label: 'Staff lunch, gifts & training', acct: '4100', en: 'Other staff costs', nl: 'Overige personeelskosten', icon: 'ph-hand-heart', g: 'People', rate: 9, reclaim: false, vat: 'VAT not reclaimable (staff benefit)', note: 'Counts toward the work-related costs scheme (WKR) — 38% of this year’s allowance used.', kw: 'lunch groceries supermarket cake coffee gift course training team' },
+    mileage: { label: 'Mileage allowance', acct: '4110', en: 'Travel allowance', nl: 'Reiskostenvergoeding', icon: 'ph-car-simple', g: 'People', rate: 0, reclaim: false, vat: 'No VAT', note: 'Paid out tax-free up to the per-kilometre limit.', kw: 'km kilometres own car' },
+    travel: { label: 'Train, taxi & flights', acct: '4750', en: 'Travel costs', nl: 'Reiskosten', icon: 'ph-train', g: 'Travel & car', rate: 9, reclaim: true, kw: 'ns train taxi uber flight klm transavia bus' },
+    hotel: { label: 'Hotels & stays', acct: '4760', en: 'Accommodation', nl: 'Verblijfkosten', icon: 'ph-bed', g: 'Travel & car', rate: 9, reclaim: true, kw: 'hotel booking stay' },
+    fuel: { label: 'Fuel & charging', acct: '4710', en: 'Fuel', nl: 'Brandstofkosten', icon: 'ph-gas-pump', g: 'Travel & car', rate: 21, reclaim: true, kw: 'shell bp esso diesel petrol charging' },
+    parking: { label: 'Parking & tolls', acct: '4720', en: 'Parking & tolls', nl: 'Parkeer- en tolkosten', icon: 'ph-traffic-sign', g: 'Travel & car', rate: 21, reclaim: true, kw: 'q-park parking toll' },
+    meals: { label: 'Business meals & drinks', acct: '4560', en: 'Entertainment', nl: 'Representatiekosten', icon: 'ph-fork-knife', g: 'Sales & hospitality', rate: 9, reclaim: false, vat: 'VAT not reclaimable on business meals', note: 'Only partly deductible for corporate tax — settled automatically at year end.', kw: 'lunch dinner restaurant client customer drinks' },
+    samples: { label: 'Samples & tastings', acct: '4570', en: 'Samples & tastings', nl: 'Proefmonsters en proeverijen', icon: 'ph-wine', g: 'Sales & hospitality', rate: 21, reclaim: true, note: 'Bottles taken from bonded stock as samples still owe excise — Liquid Ledger adds them to the return.', kw: 'tasting sample bottles glasses' },
+    fairs: { label: 'Marketing & trade fairs', acct: '4600', en: 'Advertising & fairs', nl: 'Reclame- en beurskosten', icon: 'ph-megaphone', g: 'Sales & hospitality', rate: 21, reclaim: true, kw: 'prowein fair stand ads print flyers website' },
+    rent: { label: 'Rent & premises', acct: '4200', en: 'Rent', nl: 'Huur bedrijfsruimte', icon: 'ph-buildings', g: 'Premises & finance', rate: 21, reclaim: true, kw: 'office rent cleaning' },
+    energy: { label: 'Energy & water', acct: '4210', en: 'Energy', nl: 'Gas, water en licht', icon: 'ph-lightning', g: 'Premises & finance', rate: 21, reclaim: true, kw: 'eneco vattenfall electricity gas' },
+    insurance: { label: 'Insurance', acct: '4800', en: 'Insurance', nl: 'Verzekeringen', icon: 'ph-shield-check', g: 'Premises & finance', rate: 0, reclaim: false, vat: 'No VAT (insurance tax included)', kw: 'policy cargo' },
+    advice: { label: 'Accountant & legal', acct: '4810', en: 'Professional fees', nl: 'Advies- en accountantskosten', icon: 'ph-briefcase', g: 'Premises & finance', rate: 21, reclaim: true, kw: 'lawyer notary accountant consultant' },
+    bankfee: { label: 'Bank charges', acct: '4820', en: 'Bank charges', nl: 'Bankkosten', icon: 'ph-bank', g: 'Premises & finance', rate: 0, reclaim: false, vat: 'No VAT', kw: 'ing fee charges' },
+    other: { label: 'Something else', acct: '4900', en: 'Other costs', nl: 'Overige algemene kosten', icon: 'ph-dots-three-circle', g: 'Premises & finance', rate: 21, reclaim: true, kw: '' },
+  };
+  static I18N = {"EN":{"collapse":"Collapse sidebar","expand":"Expand sidebar","dashboard":"Dashboard","bank":"Bank","sales":"Sales invoices","purchases":"Purchase invoices","expenses":"Costs & receipts","relations":"Relations","products":"Products","stock":"Stock & warehouses","excise":"Excise & customs","shipments":"Orders & shipments","vat":"VAT return","ledger":"General ledger","reports":"Reports","daily":"Daily work","trade":"Drinks trade","accounting":"Accounting","settings":"Settings","help":"Help & support","search":"Search invoices, relations, products, amounts…","upload":"Upload","new":"New","greeting":"Good morning, Marta","date":"Wednesday 7 October 2026","synced":"Bank synced 07:12 · September closed","cash":"Cash in & out","todo":"To do","receivables":"Receivables","revcat":"Revenue by category · Sep","deadlines":"Deadlines","kBank":"Bank balance","kRec":"To receive","kPay":"To pay","kEx":"Excise due 31 Oct","fy":"Financial year 2026","vatTitle":"VAT return · Q3 2026","open":"open","mSales":"Sales invoice","mUpload":"Upload purchase invoice","mReceipt":"Receipt or expense","mProduct":"Product","mRelation":"Relation","mJournal":"Journal entry","mOrder":"Order / shipment","lang":"Language"},"NL":{"collapse":"Zijbalk inklappen","expand":"Zijbalk uitklappen","dashboard":"Dashboard","bank":"Bank","sales":"Verkoopfacturen","purchases":"Inkoopfacturen","expenses":"Kosten & bonnen","relations":"Relaties","products":"Producten","stock":"Voorraad & magazijnen","excise":"Accijns & douane","shipments":"Orders & zendingen","vat":"Btw-aangifte","ledger":"Grootboek","reports":"Rapportages","daily":"Dagelijks werk","trade":"Drankenhandel","accounting":"Boekhouding","settings":"Instellingen","help":"Help & support","search":"Zoek facturen, relaties, producten, bedragen…","upload":"Uploaden","new":"Nieuw","greeting":"Goedemorgen, Marta","date":"Woensdag 7 oktober 2026","synced":"Bank gesynchroniseerd 07:12 · september afgesloten","cash":"Geld in & uit","todo":"Te doen","receivables":"Debiteuren","revcat":"Omzet per categorie · sep","deadlines":"Deadlines","kBank":"Banksaldo","kRec":"Te ontvangen","kPay":"Te betalen","kEx":"Accijns te betalen 31 okt","fy":"Boekjaar 2026","vatTitle":"Btw-aangifte · K3 2026","open":"open","mSales":"Verkoopfactuur","mUpload":"Inkoopfactuur uploaden","mReceipt":"Bon of uitgave","mProduct":"Product","mRelation":"Relatie","mJournal":"Memoriaalboeking","mOrder":"Order / zending","lang":"Taal"},"FR":{"collapse":"Réduire la barre latérale","expand":"Agrandir la barre latérale","dashboard":"Tableau de bord","bank":"Banque","sales":"Factures de vente","purchases":"Factures d’achat","expenses":"Frais & reçus","relations":"Relations","products":"Produits","stock":"Stock & entrepôts","excise":"Accises & douane","shipments":"Commandes & expéditions","vat":"Déclaration de TVA","ledger":"Grand livre","reports":"Rapports","daily":"Au quotidien","trade":"Négoce de boissons","accounting":"Comptabilité","settings":"Paramètres","help":"Aide & support","search":"Rechercher factures, relations, produits, montants…","upload":"Importer","new":"Nouveau","greeting":"Bonjour, Marta","date":"Mercredi 7 octobre 2026","synced":"Banque synchronisée 07:12 · septembre clôturé","cash":"Entrées & sorties","todo":"À faire","receivables":"Créances clients","revcat":"Chiffre d’affaires par catégorie · sept.","deadlines":"Échéances","kBank":"Solde bancaire","kRec":"À recevoir","kPay":"À payer","kEx":"Accises dues le 31 oct.","fy":"Exercice 2026","vatTitle":"Déclaration de TVA · T3 2026","open":"ouverts","mSales":"Facture de vente","mUpload":"Importer une facture d’achat","mReceipt":"Reçu ou dépense","mProduct":"Produit","mRelation":"Relation","mJournal":"Écriture de journal","mOrder":"Commande / expédition","lang":"Langue"},"DE":{"collapse":"Seitenleiste einklappen","expand":"Seitenleiste ausklappen","dashboard":"Dashboard","bank":"Bank","sales":"Ausgangsrechnungen","purchases":"Eingangsrechnungen","expenses":"Kosten & Belege","relations":"Kontakte","products":"Produkte","stock":"Lager & Standorte","excise":"Verbrauchsteuer & Zoll","shipments":"Aufträge & Sendungen","vat":"USt-Voranmeldung","ledger":"Hauptbuch","reports":"Berichte","daily":"Tagesgeschäft","trade":"Getränkehandel","accounting":"Buchhaltung","settings":"Einstellungen","help":"Hilfe & Support","search":"Rechnungen, Kontakte, Produkte, Beträge suchen…","upload":"Hochladen","new":"Neu","greeting":"Guten Morgen, Marta","date":"Mittwoch, 7. Oktober 2026","synced":"Bank synchronisiert 07:12 · September abgeschlossen","cash":"Ein- & Ausgänge","todo":"Zu erledigen","receivables":"Forderungen","revcat":"Umsatz nach Kategorie · Sep","deadlines":"Fristen","kBank":"Kontostand","kRec":"Zu erhalten","kPay":"Zu zahlen","kEx":"Verbrauchsteuer fällig 31. Okt","fy":"Geschäftsjahr 2026","vatTitle":"USt-Voranmeldung · Q3 2026","open":"offen","mSales":"Ausgangsrechnung","mUpload":"Eingangsrechnung hochladen","mReceipt":"Beleg oder Ausgabe","mProduct":"Produkt","mRelation":"Kontakt","mJournal":"Buchungssatz","mOrder":"Auftrag / Sendung","lang":"Sprache"},"IT":{"collapse":"Comprimi barra laterale","expand":"Espandi barra laterale","dashboard":"Dashboard","bank":"Banca","sales":"Fatture di vendita","purchases":"Fatture di acquisto","expenses":"Spese & ricevute","relations":"Anagrafiche","products":"Prodotti","stock":"Magazzino & depositi","excise":"Accise & dogana","shipments":"Ordini & spedizioni","vat":"Dichiarazione IVA","ledger":"Libro mastro","reports":"Report","daily":"Lavoro quotidiano","trade":"Commercio bevande","accounting":"Contabilità","settings":"Impostazioni","help":"Aiuto & supporto","search":"Cerca fatture, anagrafiche, prodotti, importi…","upload":"Carica","new":"Nuovo","greeting":"Buongiorno, Marta","date":"Mercoledì 7 ottobre 2026","synced":"Banca sincronizzata 07:12 · settembre chiuso","cash":"Entrate & uscite","todo":"Da fare","receivables":"Crediti","revcat":"Fatturato per categoria · set","deadlines":"Scadenze","kBank":"Saldo bancario","kRec":"Da incassare","kPay":"Da pagare","kEx":"Accise dovute 31 ott","fy":"Esercizio 2026","vatTitle":"Dichiarazione IVA · T3 2026","open":"aperti","mSales":"Fattura di vendita","mUpload":"Carica fattura di acquisto","mReceipt":"Ricevuta o spesa","mProduct":"Prodotto","mRelation":"Anagrafica","mJournal":"Scrittura contabile","mOrder":"Ordine / spedizione","lang":"Lingua"},"ES":{"collapse":"Contraer barra lateral","expand":"Expandir barra lateral","dashboard":"Panel","bank":"Banco","sales":"Facturas de venta","purchases":"Facturas de compra","expenses":"Gastos & tickets","relations":"Contactos","products":"Productos","stock":"Stock & almacenes","excise":"Impuestos especiales & aduanas","shipments":"Pedidos & envíos","vat":"Declaración de IVA","ledger":"Libro mayor","reports":"Informes","daily":"Día a día","trade":"Comercio de bebidas","accounting":"Contabilidad","settings":"Ajustes","help":"Ayuda & soporte","search":"Buscar facturas, contactos, productos, importes…","upload":"Subir","new":"Nuevo","greeting":"Buenos días, Marta","date":"Miércoles 7 de octubre de 2026","synced":"Banco sincronizado 07:12 · septiembre cerrado","cash":"Entradas & salidas","todo":"Pendiente","receivables":"Cuentas por cobrar","revcat":"Ingresos por categoría · sep","deadlines":"Plazos","kBank":"Saldo bancario","kRec":"Por cobrar","kPay":"Por pagar","kEx":"Impuestos especiales 31 oct","fy":"Ejercicio 2026","vatTitle":"Declaración de IVA · T3 2026","open":"abiertos","mSales":"Factura de venta","mUpload":"Subir factura de compra","mReceipt":"Ticket o gasto","mProduct":"Producto","mRelation":"Contacto","mJournal":"Asiento contable","mOrder":"Pedido / envío","lang":"Idioma"},"PL":{"collapse":"Zwiń pasek boczny","expand":"Rozwiń pasek boczny","dashboard":"Pulpit","bank":"Bank","sales":"Faktury sprzedaży","purchases":"Faktury zakupu","expenses":"Koszty & paragony","relations":"Kontrahenci","products":"Produkty","stock":"Magazyny & stany","excise":"Akcyza & cło","shipments":"Zamówienia & wysyłki","vat":"Deklaracja VAT","ledger":"Księga główna","reports":"Raporty","daily":"Codzienna praca","trade":"Handel napojami","accounting":"Księgowość","settings":"Ustawienia","help":"Pomoc","search":"Szukaj faktur, kontrahentów, produktów, kwot…","upload":"Prześlij","new":"Nowy","greeting":"Dzień dobry, Marta","date":"Środa, 7 października 2026","synced":"Bank zsynchronizowany 07:12 · wrzesień zamknięty","cash":"Wpływy & wydatki","todo":"Do zrobienia","receivables":"Należności","revcat":"Przychód wg kategorii · wrz","deadlines":"Terminy","kBank":"Saldo bankowe","kRec":"Do otrzymania","kPay":"Do zapłaty","kEx":"Akcyza do zapłaty 31 paź","fy":"Rok obrotowy 2026","vatTitle":"Deklaracja VAT · III kw. 2026","open":"otwarte","mSales":"Faktura sprzedaży","mUpload":"Prześlij fakturę zakupu","mReceipt":"Paragon lub wydatek","mProduct":"Produkt","mRelation":"Kontrahent","mJournal":"Polecenie księgowania","mOrder":"Zamówienie / wysyłka","lang":"Język"}};
+  static LANGS = [['NL', 'Nederlands'], ['EN', 'English'], ['FR', 'Français'], ['DE', 'Deutsch'], ['IT', 'Italiano'], ['ES', 'Español'], ['PL', 'Polski']];
+  static COL = { green: ['#e6f6ee', '#157347'], blue: ['#e8f0fb', '#1f4f8f'], amber: ['#fff3dc', '#9a5b00'], red: ['#fdebea', '#b42318'], gray: ['#f0f2f5', '#4b5563'], wine: ['#f8e9ee', '#7a1f3d'] };
+
+  state = {
+    screen: null, menu: false, drawer: false, invFilter: 'All', customer: 'rosa', invNo: 420,
+    lines: [{ sku: 'rioja', cases: '10', price: '9.80' }, { sku: 'glen', cases: '2', price: '34.00' }],
+    invoices: [
+      { no: 'INV-2026-0419', cust: 'Hotel Meridiaan', city: 'Utrecht, NL', date: '7 Oct', due: '21 Oct', amount: 2880, excise: 318.40, status: 'Draft' },
+      { no: 'INV-2026-0418', cust: 'Café Rosa', city: 'Amsterdam, NL', date: '2 Oct', due: '16 Oct', amount: 1284.60, excise: 74.10, status: 'Open' },
+      { no: 'INV-2026-0417', cust: 'Nordvin AB', city: 'Stockholm, SE', date: '30 Sep', due: '30 Oct', amount: 9870, excise: 0, status: 'Open' },
+      { no: 'INV-2026-0416', cust: 'Hotel Meridiaan', city: 'Utrecht, NL', date: '14 Sep', due: '28 Sep', amount: 3412.15, excise: 412.80, status: 'Overdue', days: 9 },
+      { no: 'INV-2026-0415', cust: 'Lagos Fine Spirits', city: 'Lagos, NG', date: '24 Sep', due: '24 Oct', amount: 22560, excise: 0, status: 'Open' },
+      { no: 'INV-2026-0414', cust: 'Wijnkoperij Dumont', city: 'Antwerp, BE', date: '22 Sep', due: '6 Oct', amount: 2118.40, excise: 0, status: 'Paid' },
+      { no: 'INV-2026-0413', cust: 'Bar Kade 12', city: 'Rotterdam, NL', date: '5 Sep', due: '19 Sep', amount: 846.90, excise: 96.20, status: 'Overdue', days: 18 },
+      { no: 'INV-2026-0412', cust: 'Hotel Meridiaan', city: 'Utrecht, NL', date: '1 Sep', due: '15 Sep', amount: 4210, excise: 508.20, status: 'Paid' },
+    ],
+    acct: 'ing', bankTab: 'todo',
+    txs: [
+      { id: 1, date: '6 Oct', name: 'Hotel Meridiaan', desc: 'Payment INV-2026-0416', amount: 3412.15, match: 'Sales invoice INV-2026-0416', conf: 'Exact amount and reference', icon: 'ph-receipt', inv: 'INV-2026-0416' },
+      { id: 2, date: '6 Oct', name: 'Rhenus Warehousing B.V.', desc: 'RH-88120 bonded storage Sep', amount: -1850, match: 'Purchase invoice RH-88120', conf: 'Exact amount and reference', icon: 'ph-receipt' },
+      { id: 3, date: '5 Oct', name: 'Café Rosa', desc: 'Factuur 0418', amount: 1284.60, match: 'Sales invoice INV-2026-0418', conf: 'Exact amount', icon: 'ph-receipt', inv: 'INV-2026-0418' },
+      { id: 4, date: '4 Oct', name: 'Shell Waalhaven', desc: 'Card payment · fuel', amount: -86.40, match: '4710 Fuel · 21% VAT', conf: 'Rule: booked the same way 4 times', icon: 'ph-magic-wand' },
+      { id: 5, date: '3 Oct', name: 'Belastingdienst / Douane', desc: 'MRN 26NL0004129384A2', amount: -412.30, match: 'Import duty · SHP-1179', conf: 'Customs reference found', icon: 'ph-anchor' },
+      { id: 6, date: '2 Oct', name: 'Bar Kade 12', desc: 'Deelbetaling factuur 0413', amount: 500, match: 'Part-payment INV-2026-0413', conf: '€346.90 will stay open', icon: 'ph-receipt' },
+      { id: 7, date: '1 Oct', name: 'KPN B.V.', desc: 'Direct debit 10/2026', amount: -64.95, match: '4610 Phone & internet · 21% VAT', conf: 'Rule: recurring monthly', icon: 'ph-magic-wand' },
+    ],
+    doneTx: [
+      { date: '1 Oct', name: 'Wijnkoperij Dumont', amount: 2118.40, match: 'Sales invoice INV-2026-0414' },
+      { date: '30 Sep', name: 'Bodegas Altamira', amount: -6840, match: 'Purchase invoice BA-77310' },
+      { date: '30 Sep', name: 'Salaries September', amount: -18400, match: '4000 Wages & salaries' },
+    ],
+    purchTab: 'todo', sel: 'ds', processing: false, dragging: false,
+    todoDocs: ['ds', 'cl', 'rh'],
+    booked: [
+      { id: 'b1', supplier: 'Bodegas Altamira', no: 'BA-77310', date: '28 Sep', total: 6840, flag: 'Booked' },
+      { id: 'b2', supplier: 'Maersk Line', no: 'MAEU-448210', date: '27 Sep', total: 2140, flag: 'Booked' },
+      { id: 'b3', supplier: 'Belastingdienst / Douane', no: 'MRN …84A2', date: '26 Sep', total: 412.30, flag: 'Booked' },
+      { id: 'b4', supplier: 'KPN B.V.', no: '2026-10-11872', date: '25 Sep', total: 64.95, flag: 'Booked' },
+    ],
+    expTab: 'todo', selR: 'r5', catQuery: '', ruleOn: true, rules: {},
+    receipts: [
+      { id: 'r1', date: '7 Oct', supplier: 'Staples Rotterdam', what: 'Printer paper & toner', amount: 86.47, cat: 'office', paid: 'card', status: 'suggested', why: 'Booked as office supplies 6 times before' },
+      { id: 'r2', date: '6 Oct', supplier: 'Restaurant Het Pakhuis', what: 'Lunch with Nordvin buyer · 2 people', amount: 142.50, cat: 'meals', paid: 'card', status: 'suggested', why: 'Restaurant, weekday · customer named in note' },
+      { id: 'r3', date: '6 Oct', supplier: 'NS', what: 'Train Rotterdam – Amsterdam return', amount: 37.20, cat: 'travel', paid: 'own', who: 'Joost', status: 'suggested', why: 'Public transport ticket' },
+      { id: 'r4', date: '5 Oct', supplier: 'Albert Heijn', what: 'Bread, cheese & fruit for team lunch', amount: 48.90, cat: 'staff', paid: 'own', who: 'Marta', status: 'suggested', why: 'Supermarket · weekly team lunch' },
+      { id: 'r5', date: '1 Oct', supplier: 'bol.com', what: 'Order 4021-8812 · 3 items', amount: 129.00, cat: null, paid: 'card', status: 'unsorted', why: 'Web shop — could be several things' },
+      { id: 'r6', date: '4 Oct', supplier: 'Messe Düsseldorf', what: 'ProWein 2027 · stand deposit', amount: 2400, cat: 'fairs', paid: 'bank', status: 'booked', vatOv: 'German VAT 19% · reclaimed via the EU refund portal' },
+      { id: 'r7', date: '3 Oct', supplier: 'Q-Park', what: 'Parking Rotterdam Centraal', amount: 18, cat: 'parking', paid: 'card', status: 'booked' },
+      { id: 'r8', date: '2 Oct', supplier: 'Adobe Ireland', what: 'Creative Cloud · October', amount: 71.39, cat: 'software', paid: 'card', status: 'booked', vatOv: 'EU service · VAT reverse-charged (box 4b)' },
+      { id: 'r10', date: '1 Oct', supplier: 'Eneco', what: 'Electricity office & warehouse', amount: 412.18, cat: 'energy', paid: 'bank', status: 'booked' },
+      { id: 'r9', date: '30 Sep', supplier: 'Payroll September', what: 'Imported from Nmbrs · 6 employees', amount: 26780, cat: 'wages', paid: 'bank', status: 'booked', payroll: true },
+    ],
+    lang: null, langMenu: false, side: null, relTab: 'Customers', wh: 'rtm', prodCat: 'All', prodQ: '', prodSel: null, repTab: 'pl', excFiled: false, vatFiled: false, glenFixed: false, toast: null,
+    stock: {
+      rtm: { rioja: 840, rhone: 2400, tripel: 6000, helles: 9600, glen: 1440, mezcal: 360, port: 1200 },
+      ams: { rioja: 420, rhone: 300, tripel: 1440, helles: 2000, glen: 180, mezcal: 96, port: 240, water: 4800, soda: 2160 },
+      transit: { mezcal: 2400, glen: 1920 },
+    },
+  };
+
+  static DOCS = {
+    ds: { supplier: 'Domaine Sauvage SARL', no: 'FA-22871', date: '5 Oct 2026', due: '4 Nov 2026', file: 'FA-22871.pdf', currency: 'EUR', total: 3900, srcTotal: '€3,900.00', conf: '98%',
+      lines: [{ d: 'Côtes du Rhône 2022 · 0.75 L · 14%', q: '600', p: '€6.20', a: '€3,720.00', src: '€3,720.00', acct: '3000 Stock – bonded' }, { d: 'Transport Orange → Rotterdam', q: '1', p: '€180.00', a: '€180.00', src: '€180.00', acct: '4300 Freight inward' }],
+      vat: 'Intra-EU acquisition · reverse charge (box 4b)', stockTo: '+600 btl · Rotterdam bonded, duty suspended', excise: '€0.00 now · €441.00 when released', match: 'Order PO-0932 · 600 of 600 bottles', country: 'France' },
+    cl: { supplier: 'Distilería Casa Lume', no: 'CL-2026-118', date: '2 Oct 2026', due: '1 Nov 2026', file: 'CL-2026-118.pdf', currency: 'MXN', total: 11664, srcTotal: 'MXN 240,000.00', conf: '94%',
+      note: 'Invoiced in Mexican pesos. Converted at 1 MXN = €0.0486 (ECB, 2 Oct) — check against your bank before booking.',
+      lines: [{ d: 'Mezcal Espadín · 0.7 L · 42%', q: '2,400', p: 'MXN 100.00', a: '€11,664.00', src: 'MXN 240,000.00', acct: '3020 Goods in transit' }],
+      vat: 'Import from outside EU · VAT via customs (box 4a)', stockTo: '+2,400 btl · in transit to Rotterdam bonded', excise: '€0.00 now · €14,048 when released', match: 'Order PO-0921 · shipment SHP-1182', country: 'Mexico' },
+    rh: { supplier: 'Rhenus Warehousing B.V.', no: 'RH-88120', date: '1 Oct 2026', due: '15 Oct 2026', file: 'RH-88120.pdf', currency: 'EUR', total: 1850, srcTotal: '€1,850.00', conf: '99%',
+      lines: [{ d: 'Bonded storage September · 212 pallets', q: '1', p: '€1,528.93', a: '€1,528.93', src: '€1,528.93', acct: '4400 Warehousing' }, { d: 'VAT 21%', q: '1', p: '€321.07', a: '€321.07', src: '€321.07', acct: '1810 VAT to reclaim' }],
+      vat: 'Dutch VAT 21% · €321.07 to reclaim (box 5b)', stockTo: 'No stock movement', excise: 'Not applicable', match: 'Contract RH-2024-07 · monthly', country: 'Netherlands' },
+    ga: { supplier: 'Glen Arrow Distillers Ltd', no: 'GA-5521', date: '30 Sep 2026', due: '30 Oct 2026', file: 'GA-5521.pdf', currency: 'GBP', total: 37255.68, srcTotal: '£32,256.00', conf: '96%',
+      note: 'Invoiced in pounds. Converted at 1 GBP = €1.1550 (ECB, 30 Sep).',
+      lines: [{ d: 'Glen Arrow 12 Single Malt · 0.7 L · 40%', q: '1,920', p: '£16.80', a: '€37,255.68', src: '£32,256.00', acct: '3020 Goods in transit' }],
+      vat: 'Import from outside EU · VAT via customs (box 4a)', stockTo: '+1,920 btl · in transit to Rotterdam bonded', excise: '€0.00 now · €10,704 when released', match: 'Order PO-0918 · shipment SHP-1179', country: 'United Kingdom' },
+  };
+
+  componentDidMount() {
+    let saved = null; try { saved = localStorage.getItem('ll-sidebar'); } catch (e) {}
+    this._auto = () => { if (this.state.side === null || this._autoSet) { this._autoSet = true; this.setState({ side: window.innerWidth < 1100 ? 'closed' : 'open' }); } };
+    if (saved) this.setState({ side: saved }); else this._auto();
+    window.addEventListener('resize', this._auto);
+  }
+  componentWillUnmount() { clearTimeout(this._t); clearTimeout(this._tt); window.removeEventListener('resize', this._auto); }
+  toggleSide() { const side = this.state.side === 'closed' ? 'open' : 'closed'; this._autoSet = false; try { localStorage.setItem('ll-sidebar', side); } catch (e) {} this.setState({ side }); }
+  eur(n, d = 2) { return (n < 0 ? '−€' : '€') + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  int(n) { return Math.round(n).toLocaleString('en-GB'); }
+  exB(p) { if (p.cat === 'water' || p.cat === 'soft') return 0; const R = Component.R, hl = p.size / 100; if (p.cat === 'beer') return hl * p.abv * R.beer; if (p.cat === 'spirits') return hl * p.abv / 100 * R.spirits; return hl * R[p.cat]; }
+  formula(p) {
+    if (p.cat === 'water' || p.cat === 'soft') return 'no alcohol excise';
+    if (p.cat === 'beer') return `${p.size} L × ${p.abv}% × €0.091`;
+    if (p.cat === 'spirits') return `${(p.size * p.abv / 100).toFixed(3)} L alc. × €19.91`;
+    return `${p.size} L × €${(Component.R[p.cat] / 100).toFixed(2)}`;
+  }
+  say(msg) { clearTimeout(this._tt); this.setState({ toast: msg }); this._tt = setTimeout(() => this.setState({ toast: null }), 4000); }
+  go(screen, extra) { this.setState({ screen, menu: false, ...(extra || {}) }); window.scrollTo(0, 0); }
+  tabs(list, active, key) {
+    return list.map(([k, label, count]) => ({ label, count, fg: active === k ? '#7a1f3d' : '#5b6474', line: active === k ? '#7a1f3d' : 'transparent', pick: () => this.setState({ [key]: k }) }));
+  }
+  pill(name) { const c = Component.COL[name]; return { bg: c[0], fg: c[1] }; }
+
+  reconcile(ids) {
+    this.setState(s => {
+      const hit = s.txs.filter(t => ids.includes(t.id));
+      const paid = hit.map(t => t.inv).filter(Boolean);
+      return {
+        txs: s.txs.filter(t => !ids.includes(t.id)),
+        doneTx: [...hit.map(t => ({ date: t.date, name: t.name, amount: t.amount, match: t.match })), ...s.doneTx],
+        invoices: s.invoices.map(i => paid.includes(i.no) ? { ...i, status: 'Paid' } : i),
+      };
+    });
+    this.say(ids.length > 1 ? `${ids.length} transactions booked and reconciled.` : 'Reconciled and booked.');
+  }
+  startUpload() {
+    clearTimeout(this._t);
+    this.go('purchases', { purchTab: 'todo', processing: true, dragging: false });
+    this._t = setTimeout(() => this.setState(s => ({ processing: false, todoDocs: s.todoDocs.includes('ga') ? s.todoDocs : ['ga', ...s.todoDocs], sel: 'ga' })), 1600);
+  }
+  approve(pay) {
+    const S = this.state, id = S.sel, d = Component.DOCS[id];
+    if (!d || !S.todoDocs.includes(id)) return;
+    const rest = S.todoDocs.filter(x => x !== id);
+    this.setState(s => ({
+      todoDocs: rest, sel: rest[0] || null,
+      booked: [{ id: 'bk' + id, supplier: d.supplier, no: d.no, date: '7 Oct', total: d.total, flag: pay ? 'Payment scheduled' : 'Booked' }, ...s.booked],
+      stock: id === 'ds' ? { ...s.stock, rtm: { ...s.stock.rtm, rhone: s.stock.rtm.rhone + 600 } } : s.stock,
+    }));
+    this.say(`${d.supplier} booked${pay ? ' · payment scheduled for ' + d.due : ''}.`);
+  }
+  setReceipt(patch) { this.setState(s => ({ receipts: s.receipts.map(r => r.id === s.selR ? { ...r, ...patch } : r) })); }
+  bookReceipt() {
+    const S = this.state, r = S.receipts.find(x => x.id === S.selR);
+    if (!r || !r.cat) { this.say('Pick what it was for first.'); return; }
+    const c = Component.CATS[r.cat], nl = (this.props.ledgerNames ?? 'Dutch') === 'Dutch';
+    const next = S.receipts.find(x => x.status !== 'booked' && x.id !== r.id);
+    this.setState(s => ({ receipts: s.receipts.map(x => x.id === r.id ? { ...x, status: 'booked' } : x), selR: next ? next.id : r.id, catQuery: '', rules: s.ruleOn ? { ...s.rules, [r.supplier]: r.cat } : s.rules }));
+    this.say(`Booked to ${c.acct} ${nl ? c.nl : c.en}` + (r.paid === 'own' ? ` · €${r.amount.toFixed(2)} added to ${r.who || 'Marta'}’s claim` : '') + (S.ruleOn ? ` · ${r.supplier} will be booked this way from now on` : ''));
+  }
+  expVals() {
+    const S = this.state, C = Component.CATS, nl = (this.props.ledgerNames ?? 'Dutch') === 'Dutch';
+    const an = c => c.acct + ' ' + (nl ? c.nl : c.en);
+    const paidAcct = r => r.paid === 'card' ? '1110 ' + (nl ? 'Creditcard zakelijk' : 'Company card') : r.paid === 'bank' ? '1000 ING Current' : '1650 ' + (nl ? 'Te betalen declaraties' : 'Expense claims') + ' · ' + (r.who || 'Marta');
+    const todo = S.receipts.filter(r => r.status !== 'booked'), booked = S.receipts.filter(r => r.status === 'booked');
+    const list = S.expTab === 'todo' ? todo : booked;
+    const expRows = list.map(r => { const c = r.cat && C[r.cat], on = S.selR === r.id; return { ...r, amountF: this.eur(r.amount), hasCat: !!c, noCat: !c, icon: c ? c.icon : '', catLabel: c ? c.label : '', acct: c ? c.acct : '', chipBg: r.status === 'suggested' ? '#fcf5f7' : '#f3f5f8', chipBorder: r.status === 'suggested' ? '1px dashed #e3b8c6' : '1px solid transparent', paidIcon: { card: 'ph-credit-card', bank: 'ph-bank', own: 'ph-user' }[r.paid], paidLabel: r.paid === 'card' ? 'Card' : r.paid === 'bank' ? 'Bank' : 'Own · ' + (r.who || 'Marta'), bg: on ? '#fcf5f7' : '#fff', edge: on ? '#7a1f3d' : 'transparent', pick: () => this.setState({ selR: r.id, catQuery: '' }) }; });
+    const r = S.receipts.find(x => x.id === S.selR) || null, c = r && r.cat && C[r.cat];
+    const q = S.catQuery.trim().toLowerCase();
+    const catGroups = ['Office & IT', 'People', 'Travel & car', 'Sales & hospitality', 'Premises & finance'].map(g => ({ label: g, cats: Object.entries(C).filter(([k, x]) => x.g === g && k !== 'wages' && (!q || (x.label + ' ' + x.acct + ' ' + x.nl + ' ' + x.en + ' ' + x.kw).toLowerCase().includes(q))).map(([k, x]) => { const on = r && r.cat === k; return { label: x.label, icon: x.icon, acct: an(x), border: on ? '#7a1f3d' : '#e4e7ec', bg: on ? '#fcf5f7' : '#fff', ring: on ? '0 0 0 3px #f1d5df' : 'none', pick: () => this.setReceipt(r.status === 'booked' ? { cat: k } : { cat: k, status: 'suggested', why: 'Chosen by you' }) }; }) })).filter(g => g.cats.length);
+    let lines = [];
+    if (r && r.payroll) lines = [['4000 ' + (nl ? 'Lonen en salarissen' : 'Wages & salaries'), 21400, 0], ['4010 ' + (nl ? 'Sociale lasten' : 'Employer social charges'), 3180, 0], ['4020 ' + (nl ? 'Pensioenlasten' : 'Pension contributions'), 2200, 0], ['1500 ' + (nl ? 'Af te dragen loonheffing' : 'Wage tax payable'), 0, 6940], ['1000 ING Current', 0, 19840]];
+    else if (c) {
+      if (c.reclaim && !r.vatOv) { const net = r.amount / (1 + c.rate / 100); lines = [[an(c), net, 0], ['1810 ' + (nl ? 'Te vorderen btw' : 'VAT to reclaim'), r.amount - net, 0], [paidAcct(r), 0, r.amount]]; }
+      else lines = [[an(c), r.amount, 0], [paidAcct(r), 0, r.amount]];
+    }
+    const claims = S.receipts.filter(x => x.paid === 'own' && !x.claimPaid);
+    const octCosts = S.receipts.filter(x => !x.payroll && x.date.includes('Oct')).reduce((a, x) => a + x.amount, 0);
+    return {
+      isExpensesBadge: todo.length,
+      expKpis: [
+        { label: 'Day-to-day costs · October', value: this.eur(octCosts), note: 'Excluding wages & stock purchases' },
+        { label: 'To book', value: String(todo.length), note: todo.filter(x => !x.cat).length + ' without a category' },
+        { label: 'To reimburse', value: this.eur(claims.reduce((a, x) => a + x.amount, 0)), note: [...new Set(claims.map(x => x.who || 'Marta'))].join(' & ') || 'Nobody' },
+        { label: 'Payroll September', value: '€26,780.00', note: 'Imported · split over 5 accounts' },
+      ],
+      expTabs: this.tabs([['todo', 'To book', todo.length], ['booked', 'Booked', booked.length]], S.expTab, 'expTab'),
+      expRows, expEmpty: !expRows.length,
+      exHasSel: !!r, exSel: r ? { ...r, amountF: this.eur(r.amount) } : {}, exHasWhy: !!(r && r.why && r.status !== 'booked'),
+      exSelPayroll: !!(r && r.payroll), exSelNormal: !!(r && !r.payroll),
+      catQuery: S.catQuery, onCatQuery: e => this.setState({ catQuery: e.target.value }), catGroups,
+      exHasCat: !!c, exCat: c ? { acct: an(c), vat: r.vatOv || c.vat || c.rate + '% VAT · reclaimable', note: c.note || '', hasNote: !!c.note } : {},
+      paidOpts: [['card', 'Company card', 'ph-credit-card'], ['bank', 'Bank transfer', 'ph-bank'], ['own', 'Own money', 'ph-user']].map(([k, label, icon]) => { const on = r && r.paid === k; return { label, icon, border: on ? '#7a1f3d' : '#d5d9e0', bg: on ? '#f9eef2' : '#fff', fg: on ? '#7a1f3d' : '#14171f', pick: () => this.setReceipt({ paid: k }) }; }),
+      ruleOn: S.ruleOn, toggleRule: () => this.setState(s => ({ ruleOn: !s.ruleOn })), ruleLabel: r && c ? `Always book ${r.supplier} as ${c.label.toLowerCase()}` : '',
+      exLines: lines.map(([acct, d, cr]) => ({ acct, dr: d ? this.eur(d) : '', cr: cr ? this.eur(cr) : '' })), exHasLines: lines.length > 0, exNoLines: !lines.length,
+      exCanBook: !!(r && r.status !== 'booked'), exIsBooked: !!(r && r.status === 'booked'),
+      bookReceipt: () => this.bookReceipt(),
+      bookAllSuggested: () => { const n = S.receipts.filter(x => x.status === 'suggested').length; this.setState(s => ({ receipts: s.receipts.map(x => x.status === 'suggested' ? { ...x, status: 'booked' } : x), selR: (s.receipts.find(x => x.status === 'unsorted') || {}).id || s.selR })); this.say(n ? `${n} receipts booked to their ledger accounts.` : 'Nothing suggested to book.'); },
+      payClaims: () => { if (!claims.length) { this.say('No claims to pay out.'); return; } this.setState(s => ({ receipts: s.receipts.map(x => x.paid === 'own' ? { ...x, claimPaid: true } : x) })); this.say(`SEPA batch ready: ${this.eur(claims.reduce((a, x) => a + x.amount, 0))} to ${[...new Set(claims.map(x => x.who || 'Marta'))].join(' & ')}.`); },
+      addSampleReceipt: () => { const id = 'r' + Date.now(); this.setState(s => ({ expTab: 'todo', selR: id, receipts: [{ id, date: '7 Oct', supplier: 'HEMA', what: 'Coffee filters, cups & milk for the office', amount: 23.85, cat: 'staff', paid: 'own', who: 'Marta', status: 'suggested', why: 'Looks like earlier office groceries' }, ...s.receipts] })); this.say('Receipt read: HEMA · €23.85 · suggested as staff costs.'); },
+    };
+  }
+  prodVals() {
+    const S = this.state, P = Component.P, PX = Component.PX, PS = Component.PSTYLE;
+    const groups = [['All', 'All', () => true], ['wine', 'Wine', p => p.cat === 'wine'], ['beer', 'Beer', p => p.cat === 'beer'], ['spirits', 'Spirits', p => p.cat === 'spirits'], ['fortified', 'Fortified', p => p.cat === 'fortified'], ['na', 'Water & soft drinks', p => p.cat === 'water' || p.cat === 'soft']];
+    const all = Object.entries(P);
+    const stockOf = k => Object.values(S.stock).reduce((a, w) => a + (w[k] || 0), 0);
+    const q = S.prodQ.trim().toLowerCase(), g = groups.find(x => x[0] === S.prodCat);
+    const rows = all.filter(([k, p]) => g[2](p) && (!q || (p.name + ' ' + p.sku + ' ' + PX[k].producer + ' ' + PX[k].ean).toLowerCase().includes(q))).map(([k, p]) => {
+      const x = PX[k], st = PS[p.cat], n = stockOf(k), low = p.reorder && (S.stock.rtm[k] ?? S.stock.ams[k] ?? 0) < p.reorder;
+      return { name: p.name, sku: p.sku, producer: x.producer, origin: x.origin.split(', ').pop(), cat: Component.CAT[p.cat], tileBg: st[0], tileFg: st[1], icon: st[2], sizeAbv: p.size + ' L · ' + (p.abv ? p.abv + '%' : '0%'), caseOf: p.caseOf, stock: this.int(n), stockColor: low ? '#9a5b00' : '#14171f', cost: this.eur(p.cost), price: this.eur(p.price), margin: Math.round((p.price - p.cost) / p.price * 100) + '%', excise: this.exB(p) ? this.eur(this.exB(p)) : '—', open: () => this.setState({ prodSel: k }) };
+    });
+    const k = S.prodSel, p = k && P[k], x = k && PX[k];
+    const pd = p ? (() => {
+      const st = PS[p.cat], ex = this.exB(p), locs = [['rtm', 'Rotterdam · bonded'], ['ams', 'Amsterdam · duty paid'], ['transit', 'In transit']];
+      const facts = [['EAN / barcode', x.ean], ['Volume', p.size + ' L'], ['Alcohol', p.abv ? p.abv + '% vol' : 'Alcohol-free'], ['Case', p.caseOf + ' units'], ['Pallet', x.pallet + ' cases'], ['Customs code (CN)', x.cn], ['Excise code (EMCS)', x.emcs], ['Country of origin', x.origin.split(', ').pop()]];
+      if (x.vintage) facts.splice(3, 0, [p.cat === 'wine' ? 'Vintage' : 'Age', x.vintage]);
+      if (x.plato) facts.splice(3, 0, ['Original gravity', x.plato]);
+      if (p.abv) facts.push(['Pure alcohol / unit', (p.size * p.abv / 100).toFixed(3) + ' L']);
+      return {
+        name: p.name, producer: x.producer, origin: x.origin, cat: Component.CAT[p.cat], tileBg: st[0], tileFg: st[1], sku: p.sku,
+        facts: facts.map(([l, v]) => ({ l, v })),
+        lists: x.lists.map(([name, pr]) => ({ name, btl: this.eur(pr), cs: this.eur(pr * p.caseOf), m: Math.round((pr - p.cost) / pr * 100) + '%' })),
+        cost: this.eur(p.cost) + ' / unit',
+        exBtl: ex ? this.eur(ex) : '€0.00', exCase: ex ? this.eur(ex * p.caseOf) : '€0.00', deposit: x.deposit ? this.eur(x.deposit) + ' per unit' : 'None',
+        exFormula: ex ? 'Calculated as ' + this.formula(p) + ' · NL rate · updates when the rate changes' : 'No alcohol excise' + (x.deposit ? ' · deposit is added to the invoice and refunded on return' : ''),
+        stock: locs.filter(([w]) => S.stock[w][k] != null).map(([w, l]) => ({ l, v: this.int(S.stock[w][k]) + ' units' })).concat(locs.some(([w]) => S.stock[w][k] != null) ? [] : [{ l: 'No stock', v: '—' }]),
+        reorder: p.reorder ? 'Reorder below ' + this.int(p.reorder) + ' units' : 'No reorder level set', reorderColor: p.reorder ? '#9a5b00' : '#5b6474',
+        sold: this.int(x.sold) + ' units', rev: this.eur(x.rev, 0), top: x.top,
+      };
+    })() : { facts: [], lists: [], stock: [] };
+    return {
+      prodCats: groups.map(([id, label, f]) => { const on = S.prodCat === id; return { label, count: all.filter(([, p]) => f(p)).length, border: on ? '#7a1f3d' : '#d5d9e0', bg: on ? '#7a1f3d' : '#fff', fg: on ? '#fff' : '#14171f', pick: () => this.setState({ prodCat: id }) }; }),
+      prodRows: rows, prodEmpty: !rows.length, prodQ: S.prodQ, onProdQ: e => this.setState({ prodQ: e.target.value }),
+      prodOpen: !!p, pd, closeProd: () => this.setState({ prodSel: null }),
+    };
+  }
+  setLine(i, patch) { this.setState(s => ({ lines: s.lines.map((l, j) => j === i ? { ...l, ...patch } : l) })); }
+  calc() {
+    const P = Component.P, regime = Component.CUST[this.state.customer].regime;
+    const lines = this.state.lines.map(l => {
+      const p = P[l.sku], bottles = (parseFloat(l.cases) || 0) * p.caseOf, net = bottles * (parseFloat(String(l.price).replace(',', '.')) || 0);
+      return { l, p, bottles, net, excise: regime === 'domestic' ? bottles * this.exB(p) : 0 };
+    });
+    const net = lines.reduce((a, x) => a + x.net, 0), excise = lines.reduce((a, x) => a + x.excise, 0);
+    const vat = regime === 'domestic' ? (net + excise) * 0.21 : 0;
+    return { lines, net, excise, vat, total: net + excise + vat, regime };
+  }
+  sendInvoice() {
+    const c = this.calc(), cu = Component.CUST[this.state.customer], no = 'INV-2026-0' + this.state.invNo;
+    this.setState(s => ({ drawer: false, invNo: s.invNo + 1, invFilter: 'All', invoices: [{ no, cust: cu.name, city: cu.city, date: '7 Oct', due: '21 Oct', amount: c.total, excise: c.excise, status: 'Open' }, ...s.invoices] }));
+    this.say(`${no} sent to ${cu.name} · ${this.eur(c.total)}` + (c.regime === 'eu' ? ' · e-AD drafted' : c.regime === 'export' ? ' · export declaration drafted' : ''));
+  }
+
+  renderVals() {
+    const P = Component.P, S = this.state, COL = Component.COL;
+    const screen = S.screen ?? this.props.startScreen ?? 'dashboard';
+    const stCol = { Draft: 'gray', Open: 'blue', Overdue: 'red', Paid: 'green' };
+    const inv = S.invoices.map(i => ({ ...i, amountF: this.eur(i.amount), exciseF: i.excise ? this.eur(i.excise) : '—', ...this.pill(stCol[i.status]), statusLabel: i.status === 'Overdue' ? `Overdue ${i.days}d` : i.status }));
+    const open = S.invoices.filter(i => i.status === 'Open' || i.status === 'Overdue'), overdue = S.invoices.filter(i => i.status === 'Overdue');
+    const openSum = open.reduce((a, i) => a + i.amount, 0), overSum = overdue.reduce((a, i) => a + i.amount, 0);
+    const count = st => S.invoices.filter(i => st === 'All' || i.status === st).length;
+
+    let exTotal = 0, relB = 0;
+    const exciseRows = Object.entries(Component.RELEASES).map(([k, n]) => {
+      const p = P[k], hl = n * p.size / 100, duty = n * this.exB(p); exTotal += duty; relB += n;
+      const basis = p.cat === 'beer' ? `${hl.toFixed(2)} hl × ${p.abv}% × €9.10` : p.cat === 'spirits' ? `${(hl * p.abv / 100).toFixed(3)} hl alcohol × €1,991.00` : `${hl.toFixed(2)} hl × €${Component.R[p.cat].toFixed(2)}`;
+      return { name: p.name, cat: Component.CAT[p.cat], bottles: this.int(n), hl: hl.toFixed(2), basis, duty: this.eur(duty) };
+    });
+
+    const whMeta = { rtm: ['Rotterdam', 'Bonded', 'blue', true], ams: ['Amsterdam', 'Duty paid', 'green', false], transit: ['In transit', 'Under bond', 'amber', true] };
+    let allB = 0, allV = 0;
+    const warehouses = Object.keys(S.stock).map(k => {
+      let b = 0, v = 0, e = 0; Object.entries(S.stock[k]).forEach(([s, n]) => { b += n; v += n * P[s].cost; e += n * this.exB(P[s]); });
+      allB += b; allV += v; const act = S.wh === k, c = COL[whMeta[k][2]];
+      return { name: whMeta[k][0], kind: whMeta[k][1], tagBg: c[0], tagFg: c[1], bottles: this.int(b), value: this.eur(v, 0), excise: (whMeta[k][3] ? 'excise on release ' : 'excise paid ') + this.eur(e, 0), border: act ? '#7a1f3d' : '#e4e7ec', ring: act ? '0 0 0 3px #f1d5df' : 'none', pick: () => this.setState({ wh: k }) };
+    });
+    const stockRows = Object.entries(S.stock[S.wh]).map(([k, n]) => {
+      const p = P[k];
+      return { sku: p.sku, name: p.name, cat: Component.CAT[p.cat], abv: p.abv + '%', bottles: this.int(n), litres: this.int(n * p.size), lpa: this.int(n * p.size * p.abv / 100), excise: this.eur(n * this.exB(p), 0), value: this.eur(n * p.cost, 0), low: S.wh === 'rtm' && !!p.reorder && n < p.reorder };
+    });
+
+    const accts = [
+      { k: 'ing', name: 'ING Current', iban: '•••• 4471', balance: '€84,210.32', note: S.txs.length ? `${S.txs.length} to reconcile` : 'Fully reconciled' },
+      { k: 'sav', name: 'ING Savings', iban: '•••• 9902', balance: '€40,000.00', note: 'Fully reconciled' },
+      { k: 'wise', name: 'Wise USD', iban: '•••• 0318', balance: '$12,480.20', note: '≈ €11,402.18 · fully reconciled' },
+    ];
+
+    const sel = S.sel && Component.DOCS[S.sel];
+    const selVals = sel ? {
+      ...sel, hasNote: !!sel.note,
+      fields: [
+        { label: 'Supplier', value: `${sel.supplier} · ${sel.country}`, span: 'span 2' },
+        { label: 'Invoice number', value: sel.no, span: 'auto' }, { label: 'Currency', value: sel.currency, span: 'auto' },
+        { label: 'Invoice date', value: sel.date, span: 'auto' }, { label: 'Due date', value: sel.due, span: 'auto' },
+      ],
+    } : { lines: [], fields: [] };
+    const purchList = (S.purchTab === 'todo' ? S.todoDocs.map(id => ({ id, ...Component.DOCS[id], flag: Component.DOCS[id].note ? 'Check rate' : 'Ready', flagColor: Component.DOCS[id].note ? '#9a5b00' : '#157347' })) : S.booked.map(b => ({ ...b, flagColor: '#5b6474' })))
+      .map(d => ({ ...d, totalF: this.eur(d.total), edge: S.sel === d.id ? '#7a1f3d' : 'transparent', bg: S.sel === d.id ? '#fcf5f7' : '#fff', pick: () => Component.DOCS[d.id] && this.setState({ sel: d.id }) }));
+
+    const todos = [
+      S.txs.length && { icon: 'ph-bank', ...this.pill('blue'), title: `${S.txs.length} bank transactions to reconcile`, meta: 'All have a suggested match', go: () => this.go('bank') },
+      S.todoDocs.length && { icon: 'ph-receipt', ...this.pill('blue'), title: `${S.todoDocs.length} purchase invoices to approve`, meta: 'Read and pre-booked for you', go: () => this.go('purchases', { purchTab: 'todo', sel: S.todoDocs[0] }) },
+      S.receipts.some(r => r.status !== 'booked') && { icon: 'ph-wallet', ...this.pill('blue'), title: `${S.receipts.filter(r => r.status !== 'booked').length} receipts to book`, meta: 'Lunch, travel, office supplies · categories suggested', go: () => this.go('expenses', { expTab: 'todo' }) },
+      overdue.length && { icon: 'ph-clock-countdown', ...this.pill('red'), title: `${overdue.length} invoices overdue`, meta: `${this.eur(overSum)} · send a reminder`, go: () => this.go('sales', { invFilter: 'Overdue' }) },
+      !S.glenFixed && { icon: 'ph-warning', ...this.pill('amber'), title: 'SHP-1179 held at customs', meta: 'T1 transit document missing', go: () => this.go('shipments') },
+      !S.excFiled && { icon: 'ph-scales', ...this.pill('wine'), title: 'September excise return ready', meta: `${this.eur(exTotal, 0)} · due 31 Oct`, go: () => this.go('excise') },
+    ].filter(Boolean);
+
+    const shipsRaw = [
+      { ref: 'SHP-1190', dir: 'Export', route: 'Rotterdam → Lagos', mode: 'Sea · 40 ft container', goods: '4,800 btl spirits & wine', eta: '12 Oct', st: 0, stage: 'Booked · export declaration drafted' },
+      { ref: 'SHP-1182', dir: 'Import', route: 'Veracruz → Rotterdam', mode: 'Sea · 20 ft container', goods: '2,400 Mezcal Espadín', eta: '14 Oct', st: 1, stage: 'At sea' },
+      { ref: 'SHP-1188', dir: 'EU', route: 'Rotterdam → Stockholm', mode: 'Road · e-AD under EMCS', goods: '3,600 btl wine & beer', eta: '9 Oct', st: 1, stage: 'On the road' },
+      { ref: 'SHP-1179', dir: 'Import', route: 'Glasgow → Rotterdam', mode: 'Sea · 20 ft container', goods: '1,920 Glen Arrow 12', eta: S.glenFixed ? 'Today' : '—', st: S.glenFixed ? 2 : 2, stage: S.glenFixed ? 'Released · arriving today' : 'Held · T1 document missing', blocked: !S.glenFixed },
+      { ref: 'SHP-1185', dir: 'Import', route: 'Logroño → Rotterdam', mode: 'Road · truck', goods: '1,200 Rioja Crianza', eta: '6 Oct', st: 3, stage: 'Arrived · booked into stock' },
+      { ref: 'SHP-1191', dir: 'Domestic', route: 'Amsterdam → Café Rosa', mode: 'Van', goods: '18 cases mixed', eta: '2 Oct', st: 3, stage: 'Delivered · signed' },
+    ];
+    const dirCol = { Import: 'blue', Export: 'wine', EU: 'gray', Domestic: 'green' };
+    const ships = shipsRaw.map(s => ({ ...s, ...this.pill(dirCol[s.dir]), stageColor: s.blocked ? '#b42318' : '#5b6474',
+      bars: [0, 1, 2, 3].map(i => ({ c: i < s.st || (i === s.st && !s.blocked) ? (s.st === 3 ? '#1aa364' : '#7a1f3d') : i === s.st && s.blocked ? '#e5484d' : '#e4e7ec' })),
+      hasAction: !!s.blocked, action: 'Upload T1', act: () => { this.setState({ glenFixed: true }); this.say('T1 document sent to Customs · SHP-1179 released.'); } }));
+
+    const c = this.calc();
+    const lines = c.lines.map((x, i) => ({
+      cases: x.l.cases, price: x.l.price, netF: this.eur(x.net), exciseF: this.eur(x.excise),
+      formula: c.regime === 'domestic' ? `${this.int(x.bottles)} btl × ${this.formula(x.p)}` : 'not charged',
+      desc: `${x.p.sku} · ${x.p.size} L · ${x.p.abv}% · case of ${x.p.caseOf}`,
+      select: React.createElement('select', { value: x.l.sku, onChange: e => this.setLine(i, { sku: e.target.value, price: P[e.target.value].price.toFixed(2) }), style: { height: 34, width: '100%', padding: '0 8px', border: '1px solid #d5d9e0', borderRadius: 8, font: 'inherit', fontSize: 13.5, background: '#fff', color: '#14171f' } },
+        Object.entries(P).map(([k, p]) => React.createElement('option', { key: k, value: k }, p.name))),
+      onCases: e => this.setLine(i, { cases: e.target.value }), onPrice: e => this.setLine(i, { price: e.target.value }),
+      remove: () => this.setState(s => ({ lines: s.lines.filter((_, j) => j !== i) })),
+    }));
+
+    const costYtd = [['7000', 'Cost of goods sold', 'Kostprijs omzet', 748200], ['4000', 'Wages & salaries', 'Lonen en salarissen', 165600], ['4010', 'Employer social charges', 'Sociale lasten', 24610], ['4020', 'Pension contributions', 'Pensioenlasten', 17050], ['4100', 'Other staff costs', 'Overige personeelskosten', 3980], ['4110', 'Travel allowance', 'Reiskostenvergoeding', 2140], ['4200', 'Rent', 'Huur bedrijfsruimte', 28800], ['4210', 'Energy', 'Gas, water en licht', 4370], ['4300', 'Freight & customs', 'Vracht- en inklaringskosten', 58300], ['4400', 'Warehousing', 'Opslagkosten', 37800], ['4500', 'Office supplies', 'Kantoorbenodigdheden', 1920], ['4520', 'Software & IT', 'Automatiseringskosten', 3410], ['4560', 'Entertainment', 'Representatiekosten', 4860], ['4570', 'Samples & tastings', 'Proefmonsters en proeverijen', 6240], ['4600', 'Advertising & fairs', 'Reclame- en beurskosten', 18700], ['4610', 'Phone & internet', 'Telefoon- en internetkosten', 1170], ['4710', 'Fuel', 'Brandstofkosten', 3880], ['4720', 'Parking & tolls', 'Parkeer- en tolkosten', 640], ['4750', 'Travel costs', 'Reiskosten', 1310], ['4760', 'Accommodation', 'Verblijfkosten', 2980], ['4800', 'Insurance', 'Verzekeringen', 5600], ['4810', 'Professional fees', 'Advies- en accountantskosten', 9200], ['4820', 'Bank charges', 'Bankkosten', 1140]];
+    const cash = [['Apr', 118, 104], ['May', 131, 119], ['Jun', 146, 128], ['Jul', 137, 131], ['Aug', 141, 126], ['Sep', 162, 139]];
+    const plRows = [['Revenue (excl. excise)', 148320, 131900, 1196400, 1], ['Cost of goods sold', -92460, -83110, -748200], ['Gross margin', 55860, 48790, 448200, 1], ['Freight & customs', -6980, -6120, -58300], ['Warehousing', -4200, -4200, -37800], ['Wages & salaries', -18400, -18400, -165600], ['Other costs', -3150, -2980, -27900], ['Profit before tax', 23130, 17090, 158600, 2]];
+    const navDef = [
+      [null, [['dashboard', 'Dashboard', 'ph-squares-four']]],
+      ['Daily work', [['bank', 'Bank', 'ph-bank', S.txs.length], ['sales', 'Sales invoices', 'ph-file-text', overdue.length], ['purchases', 'Purchase invoices', 'ph-receipt', S.todoDocs.length], ['expenses', 'Costs & receipts', 'ph-wallet', S.receipts.filter(r => r.status !== 'booked').length], ['relations', 'Relations', 'ph-address-book']]],
+      ['Drinks trade', [['products', 'Products', 'ph-wine'], ['stock', 'Stock & warehouses', 'ph-package'], ['excise', 'Excise & customs', 'ph-seal-check'], ['shipments', 'Orders & shipments', 'ph-boat']]],
+      ['Accounting', [['vat', 'VAT return', 'ph-percent'], ['ledger', 'General ledger', 'ph-books'], ['reports', 'Reports', 'ph-chart-line-up']]],
+    ];
+    const rel = {
+      Customers: [
+        ['Café Rosa', 'Bar & restaurant', 'Netherlands', 'NL001234567B01', 'Duty-paid deliveries', '14 days', 1284.60],
+        ['Hotel Meridiaan', 'Hotel', 'Netherlands', 'NL815522903B01', 'Duty-paid deliveries', '14 days', 6292.15],
+        ['Bar Kade 12', 'Bar', 'Netherlands', 'NL003349812B01', 'Duty-paid deliveries', '14 days', 846.90],
+        ['Nordvin AB', 'Wholesaler', 'Sweden', 'SE556677889901', 'Authorised consignee · SE0000ZK3341', '30 days', 9870],
+        ['Wijnkoperij Dumont', 'Wine shop', 'Belgium', 'BE0478221093', 'Registered consignee · BE0E00093120', '14 days', 0],
+        ['Lagos Fine Spirits', 'Importer', 'Nigeria', '—', 'Export · outside EU', '30 days', 22560],
+      ],
+      Suppliers: [
+        ['Bodegas Altamira', 'Winery', 'Spain', 'ESB26043318', 'Consignor · ES00026W00117', '30 days', 0],
+        ['Domaine Sauvage SARL', 'Winery', 'France', 'FR40841220077', 'Consignor · FR0A2201E0004', '30 days', 3900],
+        ['Distilería Casa Lume', 'Distillery', 'Mexico', '—', 'Import · outside EU', '30 days', 11664],
+        ['Glen Arrow Distillers', 'Distillery', 'United Kingdom', 'GB284112093', 'Import · outside EU', '30 days', 0],
+        ['Brouwerij De Kroon', 'Brewery', 'Belgium', 'BE0412339081', 'Consignor · BE0E00021884', '30 days', 0],
+        ['Rhenus Warehousing B.V.', 'Bonded warehouse', 'Netherlands', 'NL009812233B01', '—', '14 days', 1850],
+      ],
+    };
+
+    const ex = this.expVals();
+    const sideIsOpen = (S.side ?? (this.props.sidebar === 'Icons only' ? 'closed' : 'open')) !== 'closed';
+    const lang = S.lang ?? this.props.language ?? 'EN', t = Component.I18N[lang] || Component.I18N.EN;
+    return {
+      sideOpen: sideIsOpen, sideClosed: !sideIsOpen, toggleSide: () => this.toggleSide(),
+      sideW: sideIsOpen ? '236px' : '68px', sidePadX: sideIsOpen ? '12px' : '10px', sideJustify: sideIsOpen ? 'flex-start' : 'center', sideBrandPad: sideIsOpen ? '8px' : '0', sideItemPad: sideIsOpen ? '7px 10px' : '9px 0', sideIcon: sideIsOpen ? '18px' : '20px',
+      t, langCode: lang, langOpen: S.langMenu, toggleLang: () => this.setState(s => ({ langMenu: !s.langMenu, menu: false })),
+      langs: Component.LANGS.map(([code, name]) => ({ code, name, on: lang === code, bg: lang === code ? '#f9eef2' : 'transparent', pick: () => this.setState({ lang: code, langMenu: false }) })),
+      ...ex,
+      ...this.prodVals(),
+      navGroups: navDef.map(([label, items]) => ({ label: label && t[{ 'Daily work': 'daily', 'Drinks trade': 'trade', 'Accounting': 'accounting' }[label]], hasLabel: !!label && sideIsOpen, hasRule: !!label && !sideIsOpen, items: items.map(([k, l, icon, badge]) => ({ label: t[k] || l, icon, badge, hasBadge: !!badge, bg: screen === k ? '#f9eef2' : 'transparent', fg: screen === k ? '#7a1f3d' : '#3a4250', weight: screen === k ? 600 : 400, edge: screen === k ? 'inset 3px 0 0 #7a1f3d' : 'none', go: () => this.go(k) })) })),
+      isDashboard: screen === 'dashboard', isBank: screen === 'bank', isSales: screen === 'sales', isPurchases: screen === 'purchases', isExpenses: screen === 'expenses', isRelations: screen === 'relations', isStock: screen === 'stock', isProducts: screen === 'products', isExcise: screen === 'excise', isShipments: screen === 'shipments', isVat: screen === 'vat', isLedger: screen === 'ledger', isReports: screen === 'reports',
+      notInProto: () => this.say('Not part of this prototype yet.'),
+      menuOpen: S.menu, toggleMenu: () => this.setState(s => ({ menu: !s.menu, langMenu: false })),
+      newMenu: [
+        { label: t.mSales, icon: 'ph-file-text', key: 'I', go: () => this.go('sales', { drawer: true }) },
+        { label: t.mUpload, icon: 'ph-upload-simple', key: 'U', go: () => this.startUpload() },
+        { label: t.mReceipt, icon: 'ph-wallet', key: 'E', go: () => this.go('expenses') },
+        { label: t.mJournal, icon: 'ph-books', key: 'J', go: () => this.go('ledger') },
+        { label: t.mProduct, icon: 'ph-wine', key: 'P', go: () => this.go('products') },
+        { label: t.mRelation, icon: 'ph-address-book', key: 'R', go: () => this.go('relations') },
+        { label: t.mOrder, icon: 'ph-boat', key: 'O', go: () => this.go('shipments') },
+      ],
+      goUpload: () => this.startUpload(),
+      kpis: [
+        { icon: 'ph-bank', label: t.kBank, value: '€135,612', note: 'ING, Savings & Wise USD', noteColor: '#5b6474', go: () => this.go('bank') },
+        { icon: 'ph-arrow-down-left', label: t.kRec, value: this.eur(openSum, 0), note: overdue.length ? `${this.eur(overSum, 0)} overdue` : 'Nothing overdue', noteColor: overdue.length ? '#b42318' : '#157347', go: () => this.go('sales') },
+        { icon: 'ph-arrow-up-right', label: t.kPay, value: '€18,330', note: '3 invoices due this week', noteColor: '#5b6474', go: () => this.go('purchases') },
+        { icon: 'ph-seal-check', label: t.kEx, value: this.eur(exTotal, 0), note: S.excFiled ? 'Filed' : 'Return ready to file', noteColor: S.excFiled ? '#157347' : '#9a5b00', go: () => this.go('excise') },
+      ],
+      cash: cash.map(([label, i, o]) => ({ label, hin: (i / 170 * 100) + '%', hout: (o / 170 * 100) + '%', inF: '€' + i + 'k', outF: '€' + o + 'k' })),
+      todos, todoCount: todos.length,
+      agingCur: this.eur(openSum - overSum), overdueTotal: this.eur(overSum), agingCurW: openSum ? ((openSum - overSum) / openSum * 100) + '%' : '0%', agingOverW: openSum ? (overSum / openSum * 100) + '%' : '0%',
+      topDebtors: [...open].sort((a, b) => b.amount - a.amount).slice(0, 3).map(i => ({ cust: i.cust, amountF: this.eur(i.amount) })),
+      margins: [['Spirits', 41, 58900], ['Still wine', 34, 51300], ['Beer', 22, 28700], ['Fortified wine', 38, 9420]].map(([label, pct, rev]) => ({ label, pct: pct + '%', rev: this.eur(rev, 0), revW: (rev / 60000 * 100) + '%' })),
+      deadlines: [
+        { mon: 'Oct', day: '15', title: 'Rhenus storage invoice', meta: '€1,850.00 · supplier payment', status: 'Planned', ...this.pill('gray'), go: () => this.go('purchases') },
+        { mon: 'Oct', day: '31', title: 'VAT return Q3', meta: '€9,846.20 to pay', status: S.vatFiled ? 'Filed' : 'Ready', ...this.pill(S.vatFiled ? 'green' : 'blue'), go: () => this.go('vat') },
+        { mon: 'Oct', day: '31', title: 'Excise return September', meta: this.eur(exTotal) + ' to pay', status: S.excFiled ? 'Filed' : 'Ready', ...this.pill(S.excFiled ? 'green' : 'blue'), go: () => this.go('excise') },
+        { mon: 'Oct', day: '31', title: 'Intra-EU listing (ICP) Q3', meta: '3 customers · €41,930.00', status: 'Ready', ...this.pill('blue'), go: () => this.go('vat') },
+      ],
+      accounts: accts.map(a => ({ ...a, border: S.acct === a.k ? '#7a1f3d' : '#e4e7ec', ring: S.acct === a.k ? '0 0 0 3px #f1d5df' : 'none', pick: () => this.setState({ acct: a.k }) })),
+      bankTabs: this.tabs([['todo', 'To reconcile', S.acct === 'ing' ? S.txs.length : 0], ['done', 'Reconciled', S.doneTx.length]], S.bankTab, 'bankTab'),
+      bankTodo: S.bankTab === 'todo', bankDone: S.bankTab === 'done',
+      txs: S.acct === 'ing' ? S.txs.map(t => ({ ...t, amountF: (t.amount > 0 ? '+' : '') + this.eur(t.amount), amtColor: t.amount > 0 ? '#157347' : '#14171f', ok: () => this.reconcile([t.id]) })) : [],
+      hasTx: S.acct === 'ing' && S.txs.length > 0, noTx: S.acct !== 'ing' || !S.txs.length, txCount: S.txs.length,
+      matchAll: () => this.reconcile(S.txs.map(t => t.id)),
+      doneTx: S.doneTx.map(t => ({ ...t, amountF: (t.amount > 0 ? '+' : '') + this.eur(t.amount), amtColor: t.amount > 0 ? '#157347' : '#14171f' })),
+      openTotal: this.eur(openSum),
+      invTabs: this.tabs(['All', 'Draft', 'Open', 'Overdue', 'Paid'].map(k => [k, k, count(k)]), S.invFilter, 'invFilter'),
+      invoicesShown: inv.filter(i => S.invFilter === 'All' || i.status === S.invFilter),
+      remind: () => this.say(overdue.length ? `Reminders sent to ${overdue.map(i => i.cust).join(' and ')}.` : 'Nothing overdue.'),
+      drawerOpen: S.drawer, openDrawer: () => this.setState({ drawer: true }), closeDrawer: () => this.setState({ drawer: false }),
+      nextNo: 'INV-2026-0' + S.invNo,
+      customers: Object.entries(Component.CUST).map(([k, cu]) => ({ ...cu, border: S.customer === k ? '#7a1f3d' : '#e4e7ec', bg: S.customer === k ? '#fcf5f7' : '#fff', ring: S.customer === k ? '0 0 0 3px #f1d5df' : 'none', pick: () => this.setState({ customer: k }) })),
+      regimeNote: Component.NOTE[c.regime], lines,
+      addLine: () => this.setState(s => ({ lines: [...s.lines, { sku: 'helles', cases: '5', price: P.helles.price.toFixed(2) }] })),
+      tNet: this.eur(c.net), tExcise: this.eur(c.excise), tVat: this.eur(c.vat), tTotal: this.eur(c.total),
+      vatLine: c.regime === 'domestic' ? 'VAT 21%' : c.regime === 'eu' ? 'VAT reverse-charged' : 'VAT 0% (export)',
+      sendInvoice: () => this.sendInvoice(),
+      onDragOver: e => { e.preventDefault(); if (!this.state.dragging) this.setState({ dragging: true }); },
+      onDragLeave: () => this.setState({ dragging: false }),
+      onDrop: e => { e.preventDefault(); this.startUpload(); },
+      dropBorder: S.dragging ? '#7a1f3d' : '#c4cbd6', dropBg: S.dragging ? '#f9eef2' : '#fff',
+      dropIcon: S.processing ? 'ph-hourglass-medium' : 'ph-upload-simple', dropTitle: S.processing ? 'Reading GA-5521.pdf — products, alcohol %, VAT, excise…' : 'Drop invoices or receipts here',
+      trySample: () => this.startUpload(),
+      purchTabs: this.tabs([['todo', 'To approve', S.todoDocs.length], ['booked', 'Booked', S.booked.length]], S.purchTab, 'purchTab'),
+      purchList, purchEmpty: purchList.length === 0, hasSel: !!sel, sel: selVals, selTodo: !!sel && S.todoDocs.includes(S.sel),
+      approve: () => this.approve(false), approvePay: () => this.approve(true),
+      relTabs: this.tabs([['Customers', 'Customers', rel.Customers.length], ['Suppliers', 'Suppliers', rel.Suppliers.length]], S.relTab, 'relTab'),
+      relations: rel[S.relTab].map(([name, kind, country, vat, excise, terms, o]) => ({ name, kind, country, vat, excise, terms, open: o ? this.eur(o) : '—', ini: name.split(' ').map(w => w[0]).join('').slice(0, 2) })),
+      warehouses, stockRows, whExciseLabel: whMeta[S.wh][3] ? 'Excise on release' : 'Excise paid',
+      exciseRows, exciseTotal: this.eur(exTotal), releasedBottles: this.int(relB),
+      excLabel: S.excFiled ? 'Filed · EX-2026-09-4471' : 'File with Customs', excIcon: S.excFiled ? 'ph-check-circle' : 'ph-paper-plane-tilt',
+      fileExcise: () => { if (!S.excFiled) { this.setState({ excFiled: true }); this.say(`September excise return filed · ${this.eur(exTotal)} collected 31 Oct.`); } },
+      customsDocs: [
+        { type: 'Import declaration', ref: 'MRN 26NL0004129384A2', shipment: 'SHP-1185 · Rioja from Logroño', status: 'Released', ...this.pill('green') },
+        { type: 'e-AD (EMCS)', ref: 'ARC 26NLA9V2K3TQ8811P5', shipment: 'SHP-1188 · Nordvin, Stockholm', status: 'Awaiting receipt', ...this.pill('blue') },
+        { type: 'Export declaration', ref: 'MRN 26NL0004190022E8', shipment: 'SHP-1190 · Lagos', status: 'Drafted automatically', ...this.pill('blue') },
+        { type: 'T1 transit', ref: S.glenFixed ? 'MRN 26GB0007712093T1' : '—', shipment: 'SHP-1179 · Glen Arrow, Glasgow', status: S.glenFixed ? 'Accepted' : 'Missing — upload needed', ...this.pill(S.glenFixed ? 'green' : 'red') },
+      ],
+      ships,
+      vatLabel: S.vatFiled ? 'Submitted' : 'Submit return', vatIcon: S.vatFiled ? 'ph-check-circle' : 'ph-paper-plane-tilt',
+      fileVat: () => { if (!S.vatFiled) { this.setState({ vatFiled: true }); this.say('VAT return Q3 submitted with ICP listing · €9,846.20 due 31 Oct.'); } },
+      vatRows: [
+        ['', 'Domestic supplies', '', '', 1], ['1a', 'Supplies taxed at 21%', '€312,480', '€65,620.80'], ['1e', 'Supplies at 0% or not taxed', '€0', '€0.00'],
+        ['', 'Supplies abroad', '', '', 1], ['3a', 'Supplies to countries outside the EU', '€84,200', ''], ['3b', 'Supplies to EU countries (ICP)', '€41,930', ''],
+        ['', 'Supplies to you from abroad', '', '', 1], ['4a', 'Goods & services from outside the EU', '€36,780', '€7,723.80'], ['4b', 'Acquisitions from EU countries', '€128,400', '€26,964.00'],
+        ['5a', 'VAT due (subtotal)', '', '€100,308.60', 2], ['5b', 'Input VAT to reclaim', '', '−€90,462.40', 2],
+      ].map(([box, label, base, vat, h]) => ({ box, label, base, vat, bg: h === 1 ? '#f9fafb' : '#fff', w: h ? 600 : 400, pad: h === 1 ? '8px 16px' : '11px 16px' })),
+      icp: [{ name: 'Nordvin AB', vat: 'SE556677889901', amt: '€28,410.00' }, { name: 'Wijnkoperij Dumont', vat: 'BE0478221093', amt: '€9,880.00' }, { name: 'Weinhandel Krüger', vat: 'DE298441207', amt: '€3,640.00' }],
+      vatChecks: [
+        { icon: 'ph-check-circle', color: '#157347', label: 'All 412 sales and purchase invoices in Q3 are booked' },
+        { icon: 'ph-check-circle', color: '#157347', label: 'EU customer VAT numbers validated in VIES' },
+        { icon: 'ph-check-circle', color: '#157347', label: 'Import VAT matches customs statements (Article 23 permit)' },
+        { icon: S.txs.length ? 'ph-warning' : 'ph-check-circle', color: S.txs.length ? '#9a5b00' : '#157347', label: S.txs.length ? `${S.txs.length} October bank items unreconciled — no effect on Q3` : 'Bank fully reconciled' },
+      ],
+      coa: [
+        { label: 'Assets', total: '€482,668', rows: [['1000', 'ING Current', '€84,210'], ['1010', 'ING Savings', '€40,000'], ['1020', 'Wise USD', '€11,402'], ['1300', 'Accounts receivable', this.eur(openSum, 0)], ['3000', 'Stock — bonded', '€168,940'], ['3010', 'Stock — duty paid', '€21,380'], ['3020', 'Goods in transit', '€68,010']] },
+        { label: 'Liabilities', total: '€44,213', rows: [['1600', 'Accounts payable', '€18,330'], ['1700', 'VAT payable', '€9,846'], ['1710', 'Excise payable', this.eur(exTotal, 0)]] },
+        { label: 'Revenue · YTD', total: '€1,196,400', rows: [['8000', 'Sales — wine', '€412,800'], ['8010', 'Sales — beer', '€231,600'], ['8020', 'Sales — spirits', '€478,300'], ['8030', 'Sales — fortified', '€73,700']] },
+        { label: 'Costs · YTD', total: this.eur(costYtd.reduce((a, x) => a + x[3], 0), 0), rows: costYtd.map(([code, en, nlN, v]) => [code, (this.props.ledgerNames ?? 'Dutch') === 'Dutch' ? nlN : en, this.eur(v, 0), (this.props.ledgerNames ?? 'Dutch') === 'Dutch' ? en : '']) },
+      ].map(g => ({ ...g, rows: g.rows.map(([code, name, bal, sub]) => ({ code, name, bal, sub: sub || '' })) })),
+      journal: [
+        { title: 'Purchase BA-77310 · Bodegas Altamira', date: '28 Sep', src: 'Auto from upload', lines: [['3000 Stock — bonded', '€6,840.00', ''], ['1600 Accounts payable', '', '€6,840.00']] },
+        { title: 'Excise release · September', date: '30 Sep', src: 'Auto from stock', lines: [['7050 Excise on releases', exTotal ? this.eur(exTotal) : '', ''], ['1710 Excise payable', '', this.eur(exTotal)]] },
+        { title: 'Sales INV-2026-0417 · Nordvin AB', date: '30 Sep', src: 'Sales invoice', lines: [['1300 Accounts receivable', '€9,870.00', ''], ['8000 Sales — wine (EU)', '', '€9,870.00']] },
+        { title: 'Salaries September', date: '30 Sep', src: 'Bank', lines: [['4000 Wages & salaries', '€18,400.00', ''], ['1000 ING Current', '', '€18,400.00']] },
+      ].map(j => ({ ...j, lines: j.lines.map(([acct, dr, cr]) => ({ acct, dr, cr })) })),
+      repTabs: this.tabs([['pl', 'Profit & loss'], ['bs', 'Balance sheet']], S.repTab, 'repTab'),
+      repPL: S.repTab === 'pl', repBS: S.repTab === 'bs',
+      pl: plRows.map(([label, sep, aug, ytd, h]) => { const d = (Math.abs(sep) - Math.abs(aug)) / Math.abs(aug) * 100; return { label, sep: this.eur(sep, 0), aug: this.eur(aug, 0), ytd: this.eur(ytd, 0), delta: Math.abs(d) < 0.5 ? '—' : (d > 0 ? '+' : '') + d.toFixed(0) + '%', dc: Math.abs(d) < 0.5 ? '#8a93a3' : (sep > 0) === (d > 0) ? '#157347' : '#b42318', w: h ? 600 : 400, bg: h === 2 ? '#f8e9ee' : h ? '#f9fafb' : '#fff' }; }),
+      bs: [
+        { label: 'Assets', total: '€482,668', rows: [['Bank & cash', '€135,612'], ['Accounts receivable', '€46,326'], ['Stock (bonded, duty paid, in transit)', '€258,330'], ['Prepaid & other', '€42,400']].map(([l, v]) => ({ l, v })) },
+        { label: 'Equity & liabilities', total: '€482,668', rows: [['Equity', '€298,455'], ['Profit this year', '€158,600'], ['Accounts payable', '€18,330'], ['VAT & excise payable', '€7,283']].map(([l, v]) => ({ l, v })) },
+      ],
+      hasToast: !!S.toast, toast: S.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -281,3 +281,133 @@ export function daysOverdue(inv: { status: string; dueDate: Date }, today = new 
   const d = Math.floor((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - inv.dueDate.getTime()) / 86400_000);
   return d > 0 ? d : 0;
 }
+
+/** Unit price for a customer: their default price list, else Horeca, else the first list. */
+export function listPriceFor(prices: { list: string; unitPriceCents: number; validFrom?: Date }[], list?: string | null): number {
+  const pick = (l: string) =>
+    prices
+      .filter((p) => p.list.toLowerCase() === l.toLowerCase())
+      .sort((a, b) => (b.validFrom?.getTime() ?? 0) - (a.validFrom?.getTime() ?? 0))[0];
+  return (list ? pick(list) : undefined)?.unitPriceCents ?? pick("Horeca")?.unitPriceCents ?? prices[0]?.unitPriceCents ?? 0;
+}
+
+export const isCreditNote = (inv: { totalCents: number; number?: string | null }) => inv.totalCents < 0 || Boolean(inv.number?.startsWith("CN-"));
+
+/**
+ * Credit a sent invoice in full. Creates a numbered credit note (CN-yyyy-nnnn)
+ * that mirrors the invoice, posts the mirror image of the sales entry (revenue,
+ * VAT, excise, deposit, cost of sales), returns the goods to the warehouse they
+ * left from and voids customs documents still in draft. Both documents end up
+ * CREDITED. History is never edited.
+ */
+export async function creditInvoice(tx: Tx, input: { administrationId: string; invoiceId: string; date: Date; userId?: string | null; reason?: string | null }) {
+  const inv = await tx.salesInvoice.findUniqueOrThrow({ where: { id: input.invoiceId }, include: { lines: { orderBy: { sort: "asc" } } } });
+  if (inv.status === "DRAFT") throw new PostingError("Drafts aren't booked yet. Delete the draft instead.");
+  if (inv.status === "CREDITED") throw new PostingError("This invoice has already been credited.");
+  if (isCreditNote(inv)) throw new PostingError("A credit note can't be credited.");
+  if (!inv.journalEntryId) throw new PostingError("This invoice has no journal entry to reverse.");
+  const [customer, original] = await Promise.all([
+    tx.relation.findUniqueOrThrow({ where: { id: inv.customerId } }),
+    tx.journalEntry.findUniqueOrThrow({ where: { id: inv.journalEntryId }, include: { lines: true } }),
+  ]);
+  const year = input.date.getUTCFullYear();
+  const n = await nextNumber(tx, input.administrationId, `credit:${year}`);
+  const number = formatInvoiceNumber("CN", year, n);
+
+  const cn = await tx.salesInvoice.create({
+    data: {
+      administrationId: input.administrationId,
+      number,
+      customerId: inv.customerId,
+      issueDate: input.date,
+      dueDate: input.date,
+      taxRegime: inv.taxRegime,
+      status: "CREDITED",
+      currency: inv.currency,
+      warehouseId: inv.warehouseId,
+      netCents: -inv.netCents,
+      exciseCents: -inv.exciseCents,
+      depositCents: -inv.depositCents,
+      vatCents: -inv.vatCents,
+      totalCents: -inv.totalCents,
+      reference: inv.number,
+      notes: input.reason ?? null,
+      sentAt: new Date(),
+      createdById: input.userId ?? null,
+      lines: {
+        create: inv.lines.map((l) => ({
+          administrationId: input.administrationId,
+          productId: l.productId,
+          description: l.description,
+          qtyUnits: -l.qtyUnits,
+          unitPriceCents: l.unitPriceCents,
+          netCents: -l.netCents,
+          exciseCents: -l.exciseCents,
+          exciseFormula: l.exciseFormula,
+          depositCents: -l.depositCents,
+          vatRateBp: l.vatRateBp,
+          vatCode: l.vatCode,
+          vatCents: -l.vatCents,
+          sort: l.sort,
+        })),
+      },
+    },
+  });
+
+  const entry = await post(tx, {
+    administrationId: input.administrationId,
+    date: input.date,
+    title: `Credit note ${number} · ${inv.number} · ${customer.name}`,
+    source: "SALES",
+    sourceId: cn.id,
+    reversalOfId: original.id,
+    createdById: input.userId,
+    lines: original.lines.map((l) => ({
+      account: l.accountCode,
+      debit: l.creditCents,
+      credit: l.debitCents,
+      vatCode: l.vatCode,
+      vatBase: l.vatBaseCents ? -l.vatBaseCents : null,
+      relationId: l.relationId,
+      description: l.accountCode === ACC.receivables ? number : l.description,
+    })),
+  });
+
+  // Goods back into the warehouse they left from.
+  const moves = await tx.stockMovement.findMany({
+    where: { administrationId: input.administrationId, documentType: "sales_invoice", documentId: inv.id, reason: "SALE" },
+  });
+  let units = 0;
+  for (const m of moves) {
+    if (!m.fromWarehouseId) continue;
+    await tx.stockMovement.create({
+      data: {
+        administrationId: input.administrationId,
+        productId: m.productId,
+        toWarehouseId: m.fromWarehouseId,
+        qty: m.qty,
+        reason: "SALE",
+        unitCostCents: m.unitCostCents,
+        // Excise released by the sale is credited on the excise return.
+        exciseReleased: m.exciseReleased,
+        exciseCents: m.exciseReleased ? -m.exciseCents : 0,
+        documentType: "sales_credit",
+        documentId: cn.id,
+        documentRef: number,
+        note: `Returned · credit note ${number} for ${inv.number}`,
+        at: input.date,
+        createdById: input.userId ?? null,
+      },
+    });
+    units += m.qty;
+  }
+
+  const voided = await tx.customsDocument.updateMany({
+    where: { administrationId: input.administrationId, salesInvoiceId: inv.id, status: "DRAFT" },
+    data: { status: "REJECTED", notes: `Cancelled · ${inv.number} credited by ${number}` },
+  });
+
+  await tx.salesInvoice.update({ where: { id: cn.id }, data: { journalEntryId: entry.id } });
+  const updated = await tx.salesInvoice.update({ where: { id: inv.id }, data: { status: "CREDITED" } });
+  return { invoice: updated, creditNote: { ...cn, journalEntryId: entry.id }, units, customsVoided: voided.count, refundCents: inv.paidCents };
+}

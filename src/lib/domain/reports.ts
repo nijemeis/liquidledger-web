@@ -120,3 +120,30 @@ export async function cashFlow(tx: Tx, administrationId: string, months: number,
   }
   return out;
 }
+
+/** Fiscal year containing `d` (fiscalYearStart = month 1-12). Dates are UTC midnight. */
+export function fiscalYearOf(d: Date, fiscalYearStart = 1): { start: Date; end: Date } {
+  const m0 = fiscalYearStart - 1;
+  const y = d.getUTCMonth() >= m0 ? d.getUTCFullYear() : d.getUTCFullYear() - 1;
+  return { start: new Date(Date.UTC(y, m0, 1)), end: new Date(Date.UTC(y + 1, m0, 0)) };
+}
+
+/** Debit/credit totals and balance per account for a date range (trial balance). */
+export async function trialBalance(tx: Tx, administrationId: string, opts: { from?: Date; to?: Date } = {}) {
+  const [accounts, rows] = await Promise.all([
+    tx.ledgerAccount.findMany({ where: { administrationId }, orderBy: { code: "asc" } }),
+    tx.journalLine.groupBy({
+      by: ["accountCode"],
+      where: { administrationId, entry: { date: { ...(opts.from ? { gte: opts.from } : {}), ...(opts.to ? { lte: opts.to } : {}) } } },
+      _sum: { debitCents: true, creditCents: true },
+    }),
+  ]);
+  return accounts
+    .map((a) => {
+      const r = rows.find((x) => x.accountCode === a.code);
+      const debit = r?._sum.debitCents ?? 0;
+      const credit = r?._sum.creditCents ?? 0;
+      return { ...a, debitCents: debit, creditCents: credit, balanceCents: debit - credit };
+    })
+    .filter((a) => a.debitCents || a.creditCents);
+}

@@ -49,7 +49,12 @@ interface MoveBase {
   at?: Date;
   createdById?: string | null;
   note?: string | null;
+  documentType?: string | null;
+  documentId?: string | null;
+  documentRef?: string | null;
 }
+
+const docFields = (i: MoveBase) => ({ documentType: i.documentType ?? null, documentId: i.documentId ?? null, documentRef: i.documentRef ?? null });
 
 /**
  * Move stock between warehouses. Bonded → duty paid is a release for
@@ -86,6 +91,7 @@ export async function transferStock(tx: Tx, input: MoveBase & { fromWarehouseId:
       at,
       note: input.note ?? null,
       createdById: input.createdById ?? null,
+      ...docFields(input),
     },
   });
   const value = product.costCents * input.qty;
@@ -133,6 +139,7 @@ export async function takeSample(tx: Tx, input: MoveBase & { warehouseId: string
       at,
       note: input.note ?? null,
       createdById: input.createdById ?? null,
+      ...docFields(input),
     },
   });
   const value = product.costCents * input.qty;
@@ -197,7 +204,7 @@ export async function countStock(tx: Tx, input: Omit<MoveBase, "qty"> & { wareho
 /** Record an inbound movement and update the product's moving-average landed cost. */
 export async function receiveStock(
   tx: Tx,
-  input: MoveBase & { warehouseId: string; unitCostCents: number; reason?: StockReason; documentType?: string; documentId?: string; documentRef?: string },
+  input: MoveBase & { warehouseId: string; unitCostCents: number; reason?: StockReason },
 ) {
   const product = await tx.product.findUniqueOrThrow({ where: { id: input.productId } });
   const levels = await stockLevels(tx, input.administrationId);
@@ -212,9 +219,7 @@ export async function receiveStock(
       qty: input.qty,
       reason: input.reason ?? "PURCHASE",
       unitCostCents: input.unitCostCents,
-      documentType: input.documentType,
-      documentId: input.documentId,
-      documentRef: input.documentRef,
+      ...docFields(input),
       at: input.at ?? new Date(),
       note: input.note ?? null,
       createdById: input.createdById ?? null,

@@ -2,11 +2,11 @@ import { createHash } from "node:crypto";
 import { XMLParser } from "fast-xml-parser";
 import type { BankTransaction } from "@prisma/client";
 import type { Tx } from "./types";
-import { ACC } from "./chart";
+import { ACC, accountName } from "./chart";
 import { post, PostingError } from "./ledger";
 import { registerPurchasePayment } from "./purchases";
 import { registerSalesPayment } from "./sales";
-import { VAT } from "./vat";
+import { STANDARD_RATE, VAT } from "./vat";
 
 // Bank reconciliation (DOMAIN_AND_DATA.md §8). Matching runs in this order:
 //  1. exact amount + reference to an open invoice
@@ -14,11 +14,34 @@ import { VAT } from "./vat";
 //  3. history ("booked the same way N times")
 //  4. partial payments
 
-export type Suggestion =
-  | { kind: "sales"; invoiceId: string; label: string; reason: string; amountCents: number; partial?: number; icon: "Receipt" }
-  | { kind: "purchase"; invoiceId: string; label: string; reason: string; amountCents: number; icon: "Receipt" }
-  | { kind: "ledger"; account: string; vatRateBp: number; label: string; reason: string; icon: "MagicWand" | "Anchor" | "Users"; ruleId?: string }
-  | { kind: "receipt"; receiptId: string; label: string; reason: string; icon: "Wallet" };
+/**
+ * Why a suggestion was made, for translated UI text. `label`/`reason` stay as
+ * English fallbacks (logs, scripts); screens render from `code` + fields.
+ */
+export type ReasonCode = "exactRef" | "exactAmount" | "partial" | "customs" | "receipt" | "claim" | "rule" | "ruleN" | "history";
+
+type SuggestionMeta = { code?: ReasonCode; n?: number; who?: string; number?: string | null };
+
+export type Suggestion = SuggestionMeta &
+  (
+    | { kind: "sales"; invoiceId: string; label: string; reason: string; amountCents: number; partial?: number; icon: "Receipt" }
+    | { kind: "purchase"; invoiceId: string; label: string; reason: string; amountCents: number; icon: "Receipt" }
+    | { kind: "ledger"; account: string; vatRateBp: number; label: string; reason: string; icon: "MagicWand" | "Anchor" | "Users"; ruleId?: string }
+    | { kind: "receipt"; receiptId: string; label: string; reason: string; icon: "Wallet" }
+  );
+
+/** The reconcile choice that accepts a suggestion as-is. */
+export function choiceFor(s: Suggestion): ReconcileChoice {
+  switch (s.kind) {
+    case "sales":
+    case "purchase":
+      return { kind: s.kind, invoiceId: s.invoiceId };
+    case "receipt":
+      return { kind: "receipt", receiptId: s.receiptId };
+    case "ledger":
+      return { kind: "ledger", account: s.account, vatRateBp: s.vatRateBp };
+  }
+}
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -65,36 +88,36 @@ export async function suggestionsFor(tx: Tx, administrationId: string, txs: Bank
       const outstanding = (i: (typeof openSales)[number]) => i.totalCents - i.paidCents;
       const byRef = openSales.filter((i) => refMatches(text, i.number));
       const exact = byRef.find((i) => outstanding(i) === t.amountCents);
-      if (exact) s = { kind: "sales", invoiceId: exact.id, label: `Sales invoice ${exact.number}`, reason: "Exact amount and reference", amountCents: t.amountCents, icon: "Receipt" };
+      if (exact) s = { kind: "sales", invoiceId: exact.id, label: `Sales invoice ${exact.number}`, reason: "Exact amount and reference", amountCents: t.amountCents, icon: "Receipt", code: "exactRef", number: exact.number };
       if (!s) {
         const amt = openSales.filter((i) => outstanding(i) === t.amountCents);
         const sameName = amt.find((i) => norm(custName.get(i.customerId) ?? "") === norm(t.counterparty)) ?? (amt.length === 1 ? amt[0] : undefined);
-        if (sameName) s = { kind: "sales", invoiceId: sameName.id, label: `Sales invoice ${sameName.number}`, reason: "Exact amount", amountCents: t.amountCents, icon: "Receipt" };
+        if (sameName) s = { kind: "sales", invoiceId: sameName.id, label: `Sales invoice ${sameName.number}`, reason: "Exact amount", amountCents: t.amountCents, icon: "Receipt", code: "exactAmount", number: sameName.number };
       }
       if (!s && byRef.length === 1 && t.amountCents < outstanding(byRef[0]!)) {
         const i = byRef[0]!;
-        s = { kind: "sales", invoiceId: i.id, label: `Part-payment ${i.number}`, reason: `€${((outstanding(i) - t.amountCents) / 100).toFixed(2)} will stay open`, amountCents: t.amountCents, partial: outstanding(i) - t.amountCents, icon: "Receipt" };
+        s = { kind: "sales", invoiceId: i.id, label: `Part-payment ${i.number}`, reason: `€${((outstanding(i) - t.amountCents) / 100).toFixed(2)} will stay open`, amountCents: t.amountCents, partial: outstanding(i) - t.amountCents, icon: "Receipt", code: "partial", number: i.number };
       }
     } else {
       const amount = -t.amountCents;
       const outstanding = (i: (typeof openPurch)[number]) => i.totalCents - i.paidCents;
       const byRef = openPurch.find((i) => refMatches(text, i.number) && outstanding(i) === amount);
       const byAmt = byRef ?? openPurch.find((i) => outstanding(i) === amount && norm(i.supplierName).slice(0, 6) === norm(t.counterparty).slice(0, 6));
-      if (byAmt) s = { kind: "purchase", invoiceId: byAmt.id, label: `Purchase invoice ${byAmt.number}`, reason: byRef ? "Exact amount and reference" : "Exact amount", amountCents: amount, icon: "Receipt" };
+      if (byAmt) s = { kind: "purchase", invoiceId: byAmt.id, label: `Purchase invoice ${byAmt.number}`, reason: byRef ? "Exact amount and reference" : "Exact amount", amountCents: amount, icon: "Receipt", code: byRef ? "exactRef" : "exactAmount", number: byAmt.number };
       if (!s) {
         const mrn = text.match(/\bMRN\s*([0-9A-Z]{18})\b/i);
-        if (mrn) s = { kind: "ledger", account: "4310", vatRateBp: 0, label: `4310 ${accName.get("4310") ?? "Import duties"}`, reason: "Customs reference found", icon: "Anchor" };
+        if (mrn) s = { kind: "ledger", account: "4310", vatRateBp: 0, label: `4310 ${accName.get("4310") ?? "Import duties"}`, reason: "Customs reference found", icon: "Anchor", code: "customs" };
       }
       if (!s) {
         const r = bankReceipts.find((x) => x.amountCents === amount && !linkedReceipts.has(x.id));
         if (r) {
           linkedReceipts.add(r.id);
-          s = { kind: "receipt", receiptId: r.id, label: `Receipt · ${r.supplier}`, reason: "Already booked · same amount", icon: "Wallet" };
+          s = { kind: "receipt", receiptId: r.id, label: `Receipt · ${r.supplier}`, reason: "Already booked · same amount", icon: "Wallet", code: "receipt", who: r.supplier };
         }
       }
       if (!s) {
         const claim = claimTotals.find((c) => c.cents === amount);
-        if (claim) s = { kind: "ledger", account: ACC.claims, vatRateBp: 0, label: `${ACC.claims} ${accName.get(ACC.claims) ?? "Expense claims"} · ${claim.name}`, reason: "Matches a paid-out expense claim", icon: "Users" };
+        if (claim) s = { kind: "ledger", account: ACC.claims, vatRateBp: 0, label: `${ACC.claims} ${accName.get(ACC.claims) ?? "Expense claims"} · ${claim.name}`, reason: "Matches a paid-out expense claim", icon: "Users", code: "claim", who: claim.name };
       }
     }
     if (!s) {
@@ -113,6 +136,8 @@ export async function suggestionsFor(tx: Tx, administrationId: string, txs: Bank
           reason: rule.timesUsed > 1 ? `Rule: booked the same way ${rule.timesUsed} times` : "Rule",
           icon: "MagicWand",
           ruleId: rule.id,
+          code: rule.timesUsed > 1 ? "ruleN" : "rule",
+          n: rule.timesUsed,
         };
       }
     }
@@ -122,7 +147,7 @@ export async function suggestionsFor(tx: Tx, administrationId: string, txs: Bank
         const counts = new Map<string, number>();
         for (const h of same) counts.set(h.matchId!, (counts.get(h.matchId!) ?? 0) + 1);
         const [account, n] = [...counts].sort((a, b) => b[1] - a[1])[0]!;
-        s = { kind: "ledger", account, vatRateBp: 0, label: `${account} ${accName.get(account) ?? ""}`, reason: `Booked the same way ${n} time${n === 1 ? "" : "s"}`, icon: "MagicWand" };
+        s = { kind: "ledger", account, vatRateBp: 0, label: `${account} ${accName.get(account) ?? ""}`, reason: `Booked the same way ${n} time${n === 1 ? "" : "s"}`, icon: "MagicWand", code: "history", n };
       }
     }
     out.set(t.id, s);
@@ -142,6 +167,10 @@ export interface ReconcileChoice {
 export async function reconcile(tx: Tx, input: { administrationId: string; txId: string; choice: ReconcileChoice; userId?: string | null }) {
   const t = await tx.bankTransaction.findUniqueOrThrow({ where: { id: input.txId }, include: { bankAccount: true } });
   if (t.status === "RECONCILED") throw new PostingError("Already reconciled.");
+  const base = await tx.administration.findUniqueOrThrow({ where: { id: input.administrationId }, select: { baseCurrency: true } });
+  if (t.bankAccount.currency !== base.baseCurrency) {
+    throw new PostingError(`Reconciling ${t.bankAccount.currency} accounts isn't supported yet. Book these lines with a journal entry for now.`);
+  }
   const bankCode = t.bankAccount.accountCode;
   const amount = Math.abs(t.amountCents);
   let entryId: string;
@@ -173,13 +202,22 @@ export async function reconcile(tx: Tx, input: { administrationId: string; txId:
   } else {
     const account = c.account;
     if (!account) throw new PostingError("Choose a ledger account.");
+    if (account === bankCode) throw new PostingError("Pick another account than the bank account itself.");
     const rate = c.vatRateBp ?? 0;
     const lines: Parameters<typeof post>[1]["lines"] = [];
     if (t.amountCents < 0) {
       const net = rate ? Math.round((amount * 10_000) / (10_000 + rate)) : amount;
       lines.push({ account, debit: net }, ...(rate ? [{ account: ACC.vatReclaim, debit: amount - net, vatCode: VAT.INPUT }] : []), { account: bankCode, credit: amount });
     } else {
-      lines.push({ account: bankCode, debit: amount }, { account, credit: amount });
+      // Incoming with VAT (e.g. a refund or a small cash sale): net to the account, VAT payable.
+      const net = rate ? Math.round((amount * 10_000) / (10_000 + rate)) : amount;
+      const admin = rate ? await tx.administration.findUniqueOrThrow({ where: { id: input.administrationId }, select: { country: true } }) : null;
+      const code = rate ? (rate >= (STANDARD_RATE[admin!.country] ?? 2100) ? VAT.SALES_HIGH : VAT.SALES_LOW) : null;
+      lines.push(
+        { account: bankCode, debit: amount },
+        { account, credit: net },
+        ...(rate ? [{ account: ACC.vatPayable, credit: amount - net, vatCode: code, vatBase: net }] : []),
+      );
     }
     const e = await post(tx, {
       administrationId: input.administrationId,
@@ -191,8 +229,11 @@ export async function reconcile(tx: Tx, input: { administrationId: string; txId:
       lines,
     });
     entryId = e.id;
-    const acc = await tx.ledgerAccount.findFirst({ where: { administrationId: input.administrationId, code: account } });
-    label = `${account} ${acc?.nameEn ?? ""}${rate ? ` · ${rate / 100}% VAT` : ""}`;
+    const [acc, lang] = await Promise.all([
+      tx.ledgerAccount.findFirst({ where: { administrationId: input.administrationId, code: account } }),
+      tx.administration.findUniqueOrThrow({ where: { id: input.administrationId }, select: { ledgerLanguage: true } }),
+    ]);
+    label = `${account} ${acc ? accountName(acc, lang.ledgerLanguage) : ""}${rate ? ` · ${rate / 100}% VAT` : ""}`;
     matchId = account;
     const rule = await tx.bookingRule.findFirst({
       where: { administrationId: input.administrationId, matchType: "supplier", pattern: { equals: t.counterparty, mode: "insensitive" }, accountCode: account },
@@ -352,4 +393,133 @@ export async function accountBalances(tx: Tx, administrationId: string) {
     balanceCents: a.openingBalanceCents + (sums.find((s) => s.bankAccountId === a.id)?._sum.amountCents ?? 0),
     toReconcile: open.find((o) => o.bankAccountId === a.id)?._count ?? 0,
   }));
+}
+
+// ── IBAN & SEPA ──────────────────────────────────────────────────────────────
+
+export const compactIban = (iban: string) => iban.replace(/\s+/g, "").toUpperCase();
+
+/** ISO 13616 check (mod 97). */
+export function isValidIban(iban: string): boolean {
+  const s = compactIban(iban);
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(s)) return false;
+  const moved = s.slice(4) + s.slice(0, 4);
+  let rem = 0;
+  for (const ch of moved) {
+    const v = /\d/.test(ch) ? ch : String(ch.charCodeAt(0) - 55);
+    for (const d of v) rem = (rem * 10 + Number(d)) % 97;
+  }
+  return rem === 1;
+}
+
+export interface SepaPayment {
+  endToEndId: string; // e.g. the supplier's invoice number
+  amountCents: number;
+  creditorName: string;
+  creditorIban: string;
+  remittance: string;
+}
+
+const xmlEsc = (s: string) =>
+  s
+    // SEPA basic Latin character set; anything else becomes a space.
+    .replace(/&/g, "+")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9/\-?:().,'+ ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+const amt = (cents: number) => (cents / 100).toFixed(2);
+
+/** SEPA credit transfer initiation, ISO 20022 pain.001.001.03. */
+export function buildPain001(input: {
+  messageId: string;
+  createdAt: Date;
+  executionDate: Date;
+  debtorName: string;
+  debtorIban: string;
+  debtorBic?: string | null;
+  payments: SepaPayment[];
+}): string {
+  const total = input.payments.reduce((a, p) => a + p.amountCents, 0);
+  const n = input.payments.length;
+  const dbtrAgt = input.debtorBic
+    ? `<FinInstnId><BIC>${xmlEsc(input.debtorBic)}</BIC></FinInstnId>`
+    : `<FinInstnId><Othr><Id>NOTPROVIDED</Id></Othr></FinInstnId>`;
+  const txs = input.payments
+    .map(
+      (p) => `      <CdtTrfTxInf>
+        <PmtId><EndToEndId>${xmlEsc(p.endToEndId).slice(0, 35) || "NOTPROVIDED"}</EndToEndId></PmtId>
+        <Amt><InstdAmt Ccy="EUR">${amt(p.amountCents)}</InstdAmt></Amt>
+        <Cdtr><Nm>${xmlEsc(p.creditorName).slice(0, 70)}</Nm></Cdtr>
+        <CdtrAcct><Id><IBAN>${compactIban(p.creditorIban)}</IBAN></Id></CdtrAcct>
+        <RmtInf><Ustrd>${xmlEsc(p.remittance).slice(0, 140)}</Ustrd></RmtInf>
+      </CdtTrfTxInf>`,
+    )
+    .join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.03" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <CstmrCdtTrfInitn>
+    <GrpHdr>
+      <MsgId>${xmlEsc(input.messageId).slice(0, 35)}</MsgId>
+      <CreDtTm>${input.createdAt.toISOString().slice(0, 19)}</CreDtTm>
+      <NbOfTxs>${n}</NbOfTxs>
+      <CtrlSum>${amt(total)}</CtrlSum>
+      <InitgPty><Nm>${xmlEsc(input.debtorName).slice(0, 70)}</Nm></InitgPty>
+    </GrpHdr>
+    <PmtInf>
+      <PmtInfId>${xmlEsc(input.messageId).slice(0, 31)}-1</PmtInfId>
+      <PmtMtd>TRF</PmtMtd>
+      <BtchBookg>true</BtchBookg>
+      <NbOfTxs>${n}</NbOfTxs>
+      <CtrlSum>${amt(total)}</CtrlSum>
+      <PmtTpInf><SvcLvl><Cd>SEPA</Cd></SvcLvl></PmtTpInf>
+      <ReqdExctnDt>${input.executionDate.toISOString().slice(0, 10)}</ReqdExctnDt>
+      <Dbtr><Nm>${xmlEsc(input.debtorName).slice(0, 70)}</Nm></Dbtr>
+      <DbtrAcct><Id><IBAN>${compactIban(input.debtorIban)}</IBAN></Id><Ccy>EUR</Ccy></DbtrAcct>
+      <DbtrAgt>${dbtrAgt}</DbtrAgt>
+      <ChrgBr>SLEV</ChrgBr>
+${txs}
+    </PmtInf>
+  </CstmrCdtTrfInitn>
+</Document>
+`;
+}
+
+/**
+ * Booked purchase invoices to pay now: due within `days` days (or overdue) or
+ * with a scheduled payment. Splits them into payable by SEPA and skipped
+ * (no supplier IBAN, invalid IBAN, or not in euro).
+ */
+export async function sepaCandidates(tx: Tx, administrationId: string, today: Date, days = 7) {
+  const until = new Date(today.getTime() + days * 86400_000);
+  const invoices = await tx.purchaseInvoice.findMany({
+    where: {
+      administrationId,
+      status: "BOOKED",
+      OR: [{ dueDate: { lte: until } }, { paymentScheduledAt: { not: null } }],
+    },
+    orderBy: [{ dueDate: "asc" }],
+  });
+  const suppliers = await tx.relation.findMany({
+    where: { administrationId, id: { in: invoices.map((i) => i.supplierId).filter((x): x is string => Boolean(x)) } },
+    select: { id: true, name: true, iban: true },
+  });
+  const byId = new Map(suppliers.map((s) => [s.id, s]));
+  const pay: { invoice: (typeof invoices)[number]; amountCents: number; iban: string; name: string }[] = [];
+  const skipped: { invoice: (typeof invoices)[number]; reason: "noIban" | "badIban" | "currency" }[] = [];
+  for (const inv of invoices) {
+    const outstanding = inv.totalCents - inv.paidCents;
+    if (outstanding <= 0) continue;
+    const sup = inv.supplierId ? byId.get(inv.supplierId) : undefined;
+    if (inv.currency !== "EUR") skipped.push({ invoice: inv, reason: "currency" });
+    else if (!sup?.iban) skipped.push({ invoice: inv, reason: "noIban" });
+    else if (!isValidIban(sup.iban)) skipped.push({ invoice: inv, reason: "badIban" });
+    else pay.push({ invoice: inv, amountCents: outstanding, iban: compactIban(sup.iban), name: sup.name });
+  }
+  return { pay, skipped };
 }

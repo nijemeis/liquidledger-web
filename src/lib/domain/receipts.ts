@@ -5,6 +5,9 @@ import { CATEGORY_BY_KEY, splitGross } from "./categories";
 import { post, PostingError } from "./ledger";
 import { STANDARD_RATE, VAT } from "./vat";
 
+/** Tax-free mileage allowance per km (NL 2026), in cents. */
+export const MILEAGE_RATE_CENTS = 23;
+
 export const OFFSET_ACCOUNT: Record<PaidBy, string> = { CARD: ACC.card, BANK: ACC.bank, OWN: ACC.claims };
 
 /** VAT overrides a receipt can carry instead of the category default. */
@@ -96,12 +99,12 @@ export async function bookReceipt(tx: Tx, input: { administrationId: string; rec
   return { receipt: updated, ruleCreated };
 }
 
-/** Suggest a category for a new receipt from rules and history. */
-export async function suggestCategory(tx: Tx, administrationId: string, supplier: string): Promise<{ categoryKey: string; reason: string } | null> {
+/** Suggest a category for a new receipt: booking rules → history → keywords (supplier, then description). */
+export async function suggestCategory(tx: Tx, administrationId: string, supplier: string, description?: string | null): Promise<{ categoryKey: string; reason: string; kind: "rule" | "history" | "keyword"; count?: number } | null> {
   const rule = await tx.bookingRule.findFirst({
     where: { administrationId, matchType: "supplier", pattern: { equals: supplier, mode: "insensitive" }, categoryKey: { not: null } },
   });
-  if (rule?.categoryKey) return { categoryKey: rule.categoryKey, reason: `Rule: always book ${supplier} this way` };
+  if (rule?.categoryKey) return { categoryKey: rule.categoryKey, reason: `Rule: always book ${supplier} this way`, kind: "rule" };
   const history = await tx.receipt.groupBy({
     by: ["categoryKey"],
     where: { administrationId, status: "BOOKED", supplier: { equals: supplier, mode: "insensitive" }, categoryKey: { not: null } },
@@ -111,13 +114,17 @@ export async function suggestCategory(tx: Tx, administrationId: string, supplier
   });
   if (history[0]?.categoryKey) {
     const c = CATEGORY_BY_KEY[history[0].categoryKey];
-    return { categoryKey: history[0].categoryKey, reason: `Booked as ${c?.label.en.toLowerCase() ?? "this"} ${history[0]._count} time${history[0]._count === 1 ? "" : "s"} before` };
+    return { categoryKey: history[0].categoryKey, reason: `Booked as ${c?.label.en.toLowerCase() ?? "this"} ${history[0]._count} time${history[0]._count === 1 ? "" : "s"} before`, kind: "history", count: history[0]._count };
   }
-  // Keyword match on the supplier name.
-  const s = supplier.toLowerCase();
-  for (const c of Object.values(CATEGORY_BY_KEY)) {
-    if (c.importOnly || !c.keywords) continue;
-    if (c.keywords.split(" ").some((k) => k.length > 2 && s.includes(k))) return { categoryKey: c.key, reason: `Looks like ${c.label.en.toLowerCase()}` };
+  // Keyword match on the supplier name, then on the description (whole words).
+  for (const text of [supplier, description ?? ""]) {
+    const s = ` ${text.toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, " ")} `;
+    for (const c of Object.values(CATEGORY_BY_KEY)) {
+      if (c.importOnly || !c.keywords) continue;
+      if (c.keywords.split(" ").some((k) => k.length > 2 && (text === supplier ? s.includes(k) : s.includes(` ${k} `)))) {
+        return { categoryKey: c.key, reason: `Looks like ${c.label.en.toLowerCase()}`, kind: "keyword" };
+      }
+    }
   }
   return null;
 }

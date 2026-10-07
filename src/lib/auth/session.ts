@@ -81,6 +81,7 @@ export const getStaffSession = cache(async (): Promise<{ session: Session; staff
   if (!token) return null;
   const session = await prisma.session.findUnique({ where: { tokenHash: sha256(token) }, include: { staff: true } });
   if (!session || session.kind !== "STAFF" || !session.staff || !alive(session)) return null;
+  if (session.supportSessionId) return null; // a support-view session never grants console access
   if (session.staff.status !== "ACTIVE") return null;
   if (session.staff.lockedUntil && session.staff.lockedUntil.getTime() > Date.now()) return null;
   await touch(session);

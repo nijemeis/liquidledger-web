@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Oleo+Script:wght@400;700&display=swap">
+<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0;background:#f5f6f8;color:#14171f;font-family:"Geist",ui-sans-serif,system-ui,sans-serif;font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}a{color:#7a1f3d;text-decoration:none}a:hover{color:#5f1730;text-decoration:underline}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #7a1f3d;outline-offset:1px}.n{font-variant-numeric:tabular-nums}</style>
+</helmet>
+<div style="display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh">
+
+<aside style="position:sticky;top:0;height:100vh;overflow-y:auto;background:#1c1216;color:#e9dde2;display:flex;flex-direction:column;padding:14px 12px 16px;gap:2px">
+  <div style="display:flex;align-items:center;gap:10px;padding:4px 8px 6px">
+    <svg viewBox="0 0 48 48" width="32" height="32" aria-hidden="true" style="flex:none"><defs><clipPath id="adm-logo"><circle cx="24" cy="24" r="12"></circle></clipPath></defs><circle cx="24" cy="24" r="22" fill="#fff"></circle><circle cx="24" cy="24" r="14" fill="none" stroke="#7a1f3d" stroke-width="2"></circle><g clip-path="url(#adm-logo)" stroke="#7a1f3d" stroke-width="1.2" opacity="0.45"><path d="M16 10V38M20 10V38M24 10V38M28 10V38M32 10V38"></path></g><circle cx="24" cy="30" r="2.6" fill="#7a1f3d"></circle></svg>
+    <div style="font-family:'Oleo Script',cursive;font-size:21px;line-height:1;color:#fff;white-space:nowrap">Liquid Ledger</div>
+  </div>
+  <div style="margin:0 8px 16px 50px"><span style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:#7a1f3d;color:#fff">Platform admin</span></div>
+  <sc-for list="{{ nav }}" as="it" hint-placeholder-count="7">
+    <button onClick="{{ it.go }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:7px;background:{{ it.bg }};color:{{ it.fg }};box-shadow:{{ it.edge }};font:inherit;font-size:14px;font-weight:{{ it.weight }};cursor:pointer;text-align:left" style-hover="background:#2c1d23">
+      <i class="ph {{ it.icon }}" style="font-size:18px"></i><span style="flex:1">{{ it.label }}</span>
+      <sc-if value="{{ it.hasBadge }}" hint-placeholder-val="{{ false }}"><span class="n" style="font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:999px;background:#e5484d;color:#fff">{{ it.badge }}</span></sc-if>
+    </button>
+  </sc-for>
+  <div style="margin-top:auto;padding:12px 10px 0;border-top:1px solid #33242a;display:flex;align-items:center;gap:10px">
+    <div style="width:30px;height:30px;border-radius:50%;background:#7a1f3d;color:#fff;display:grid;place-items:center;font-weight:600;font-size:12px">RJ</div>
+    <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;color:#fff">Ruben Janssen</div><div style="font-size:12px;color:#b9a6ae">Super admin · 2FA passkey</div></div>
+  </div>
+</aside>
+
+<div style="min-width:0;display:flex;flex-direction:column">
+  <div style="position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:12px 28px;background:rgba(245,246,248,0.92);backdrop-filter:blur(8px);border-bottom:1px solid #e4e7ec">
+    <div style="flex:1 1 160px;min-width:0;max-width:480px;display:flex;align-items:center;gap:8px;height:38px;padding:0 12px;background:#fff;border:1px solid #d5d9e0;border-radius:9px;color:#8a93a3">
+      <i class="ph ph-magnifying-glass" style="font-size:17px"></i>
+      <input placeholder="Find a client, user, email or VAT number…" style="flex:1;min-width:0;border:0;outline:0;font:inherit;font-size:14px;background:transparent;color:#14171f">
+    </div>
+    <div style="flex:0 1 auto"></div>
+    <span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#157347;padding:4px 10px;border-radius:999px;background:#e6f6ee"><span style="width:7px;height:7px;border-radius:50%;background:#1aa364"></span>All systems normal</span>
+    <a href="Liquid Ledger.dc.html" style="flex:none;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font-size:13.5px;font-weight:500;text-decoration:none"><i class="ph ph-arrow-square-out"></i>Customer app</a>
+  </div>
+
+  <main style="padding:26px 28px 80px;min-width:0">
+
+  <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+      <div><div style="font-size:13px;color:#5b6474">Wednesday 7 October 2026</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Platform overview</h1></div>
+      <button onClick="{{ openNewClient }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>New client</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+        <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:16px 18px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#5b6474"><i class="ph {{ k.icon }}" style="font-size:17px"></i>{{ k.label }}</div>
+          <div class="n" style="font-size:26px;font-weight:600;letter-spacing:-0.02em;margin-top:4px">{{ k.value }}</div>
+          <div style="font-size:12.5px;color:{{ k.noteColor }}">{{ k.note }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:14px">
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:8px">Needs attention</div>
+        <sc-for list="{{ attention }}" as="a" hint-placeholder-count="4">
+          <button onClick="{{ a.go }}" style="display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:10px 4px;border:0;border-bottom:1px solid #f0f2f5;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer" style-hover="background:#fafbfc">
+            <div style="width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:{{ a.bg }};color:{{ a.fg }}"><i class="ph {{ a.icon }}" style="font-size:17px"></i></div>
+            <div style="min-width:0"><div style="font-weight:500">{{ a.title }}</div><div style="font-size:12.5px;color:#5b6474">{{ a.meta }}</div></div>
+            <i class="ph ph-caret-right" style="color:#8a93a3"></i>
+          </button>
+        </sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="font-weight:600;font-size:15px;margin-bottom:12px">Clients by country</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ byCountry }}" as="c" hint-placeholder-count="7">
+            <div style="display:grid;grid-template-columns:110px minmax(0,1fr) 34px;gap:10px;align-items:center;font-size:13px"><span>{{ c.name }}</span><div style="height:8px;border-radius:999px;background:#f0f2f5"><div style="height:100%;width:{{ c.w }};border-radius:999px;background:#7a1f3d"></div></div><span class="n" style="text-align:right;font-weight:500">{{ c.n }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:18px 20px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-weight:600;font-size:15px">Recent activity</div><button onClick="{{ goAudit }}" style="border:0;background:none;font:inherit;font-size:13px;color:#7a1f3d;cursor:pointer">Audit log →</button></div>
+        <sc-for list="{{ auditShort }}" as="e" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5;font-size:13px"><i class="ph {{ e.icon }}" style="font-size:16px;color:#5b6474;margin-top:1px"></i><span><b style="font-weight:600">{{ e.actor }}</b> {{ e.action }}</span><span style="color:#8a93a3;font-size:12px;white-space:nowrap">{{ e.time }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isClients }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+      <div><div style="font-size:13px;color:#5b6474">Tenants</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Clients</h1></div>
+      <button onClick="{{ openNewClient }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-plus" style="font-size:16px"></i>New client</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:4px;padding:0 12px;border-bottom:1px solid #e4e7ec;flex-wrap:wrap">
+        <sc-for list="{{ clientTabs }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;padding:12px 10px;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}<span class="n" style="font-size:12px;padding:1px 7px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ t.count }}</span></button>
+        </sc-for>
+      </div>
+      <div style="overflow-x:auto"><div style="min-width:980px">
+        <div style="display:grid;grid-template-columns:minmax(0,1.8fr) 110px 100px 70px 100px 120px 130px 40px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Client</div><div>Country</div><div>Plan</div><div style="text-align:right">Users</div><div style="text-align:right">MRR</div><div>Last active</div><div>Status</div><div></div></div>
+        <sc-for list="{{ clients }}" as="c" hint-placeholder-count="8">
+          <button onClick="{{ c.open }}" style="display:grid;grid-template-columns:minmax(0,1.8fr) 110px 100px 70px 100px 120px 130px 40px;gap:12px;padding:11px 16px;align-items:center;width:100%;border:0;border-bottom:1px solid #eef0f3;background:#fff;font:inherit;font-size:13.5px;color:inherit;text-align:left;cursor:pointer" style-hover="background:#fcf5f7">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0"><div style="width:32px;height:32px;flex:none;border-radius:8px;background:#f9eef2;color:#7a1f3d;display:grid;place-items:center;font-weight:700;font-size:12px">{{ c.ini }}</div><div style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</div><div class="n" style="font-size:12.5px;color:#5b6474">{{ c.vat }}</div></div></div>
+            <div>{{ c.flag }} {{ c.country }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:6px;background:#f0f2f5;color:#3a4250">{{ c.plan }}</span></div>
+            <div class="n" style="text-align:right">{{ c.users }}</div>
+            <div class="n" style="text-align:right;font-weight:500">{{ c.mrrF }}</div>
+            <div style="color:#5b6474">{{ c.last }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:{{ c.bg }};color:{{ c.fg }}">{{ c.statusLabel }}</span></div>
+            <i class="ph ph-caret-right" style="color:#8a93a3"></i>
+          </button>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isUsers }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+      <div><div style="font-size:13px;color:#5b6474">Access</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Users</h1></div>
+      <button onClick="{{ openInvite }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-user-plus" style="font-size:16px"></i>Invite user</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:4px;padding:0 12px;border-bottom:1px solid #e4e7ec;flex-wrap:wrap">
+        <sc-for list="{{ userTabs }}" as="t" hint-placeholder-count="5">
+          <button onClick="{{ t.pick }}" style="display:flex;align-items:center;gap:6px;padding:12px 10px;border:0;background:none;font:inherit;font-size:14px;font-weight:500;cursor:pointer;color:{{ t.fg }};box-shadow:inset 0 -2px 0 {{ t.line }}">{{ t.label }}<span class="n" style="font-size:12px;padding:1px 7px;border-radius:999px;background:#f0f2f5;color:#4b5563">{{ t.count }}</span></button>
+        </sc-for>
+      </div>
+      <div style="overflow-x:auto"><div style="min-width:1040px">
+        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.3fr) 130px 130px 120px 110px 200px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>User</div><div>Client</div><div>Role</div><div>2FA</div><div>Last sign-in</div><div>Status</div><div></div></div>
+        <sc-for list="{{ users }}" as="u" hint-placeholder-count="10">
+          <div style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.3fr) 130px 130px 120px 110px 200px;gap:12px;padding:10px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3" style-hover="background:#fafbfc">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0"><div style="width:30px;height:30px;flex:none;border-radius:50%;background:#f0f2f5;display:grid;place-items:center;font-weight:600;font-size:11.5px;color:#3a4250">{{ u.ini }}</div><div style="min-width:0"><div style="font-weight:500">{{ u.name }}</div><div style="font-size:12.5px;color:#5b6474;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.email }}</div></div></div>
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ u.client }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:6px;background:#f0f2f5;color:#3a4250">{{ u.role }}</span></div>
+            <div style="display:flex;align-items:center;gap:6px;color:{{ u.mfaColor }}"><i class="ph {{ u.mfaIcon }}" style="font-size:16px"></i>{{ u.mfa }}</div>
+            <div style="color:#5b6474">{{ u.last }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:{{ u.bg }};color:{{ u.fg }}">{{ u.status }}</span></div>
+            <div style="display:flex;gap:6px;justify-content:flex-end">
+              <sc-if value="{{ u.canResend }}" hint-placeholder-val="{{ false }}"><button onClick="{{ u.resend }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid #d5d9e0;background:#fff;font:inherit;font-size:12.5px;cursor:pointer" style-hover="background:#f3f5f8">Resend invite</button></sc-if>
+              <sc-if value="{{ u.canUnlock }}" hint-placeholder-val="{{ false }}"><button onClick="{{ u.unlock }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:12.5px;cursor:pointer" style-hover="background:#5f1730">Unlock</button></sc-if>
+              <sc-if value="{{ u.canReset }}" hint-placeholder-val="{{ false }}"><button onClick="{{ u.reset }}" style="height:30px;padding:0 10px;border-radius:7px;border:1px solid #d5d9e0;background:#fff;font:inherit;font-size:12.5px;cursor:pointer" style-hover="background:#f3f5f8">Reset 2FA</button></sc-if>
+              <button onClick="{{ u.more }}" aria-label="More" style="width:30px;height:30px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;cursor:pointer;color:#5b6474" style-hover="background:#f3f5f8"><i class="ph ph-dots-three-vertical"></i></button>
+            </div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRoles }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-bottom:18px"><div style="font-size:13px;color:#5b6474">Access</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Roles &amp; permissions</h1><p style="margin:6px 0 0;color:#5b6474;max-width:70ch">Standard roles every client gets. Client owners can assign them; only platform admins can change what a role allows.</p></div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto"><div style="min-width:940px">
+        <div style="display:grid;grid-template-columns:minmax(0,1.6fr) repeat(6,minmax(90px,1fr));gap:8px;padding:12px 16px;font-size:12px;font-weight:600;color:#3a4250;background:#f9fafb;border-bottom:1px solid #e4e7ec">
+          <div style="color:#5b6474;font-weight:500">Permission</div>
+          <sc-for list="{{ roleCols }}" as="r" hint-placeholder-count="6"><div style="text-align:center">{{ r.name }}<div style="font-weight:400;color:#8a93a3;font-size:11.5px">{{ r.n }} users</div></div></sc-for>
+        </div>
+        <sc-for list="{{ perms }}" as="p" hint-placeholder-count="12">
+          <div style="display:grid;grid-template-columns:minmax(0,1.6fr) repeat(6,minmax(90px,1fr));gap:8px;padding:9px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3;background:{{ p.rowBg }}">
+            <div style="font-weight:{{ p.w }};color:{{ p.labelColor }}">{{ p.label }}</div>
+            <sc-for list="{{ p.cells }}" as="c" hint-placeholder-count="6"><div style="text-align:center;color:{{ c.color }}"><i class="ph {{ c.icon }}" style="font-size:18px"></i></div></sc-for>
+          </div>
+        </sc-for>
+      </div></div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;padding:12px 16px;font-size:12.5px;color:#5b6474"><span style="display:flex;gap:6px;align-items:center"><i class="ph-fill ph-check-circle" style="color:#157347;font-size:16px"></i>Full access</span><span style="display:flex;gap:6px;align-items:center"><i class="ph ph-eye" style="color:#1f4f8f;font-size:16px"></i>View only</span><span style="display:flex;gap:6px;align-items:center"><i class="ph ph-minus" style="color:#c4cbd6;font-size:16px"></i>No access</span></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isBilling }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-bottom:18px"><div style="font-size:13px;color:#5b6474">Business</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Plans &amp; billing</h1></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px">
+      <sc-for list="{{ plans }}" as="p" hint-placeholder-count="4">
+        <div style="background:#fff;border:1px solid {{ p.border }};border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:16px">{{ p.name }}</span><span class="n" style="font-size:12.5px;color:#5b6474">{{ p.clients }} clients</span></div>
+          <div class="n"><span style="font-size:26px;font-weight:600">{{ p.price }}</span><span style="color:#5b6474;font-size:13px"> {{ p.per }}</span></div>
+          <sc-for list="{{ p.features }}" as="f" hint-placeholder-count="4"><div style="display:flex;gap:8px;font-size:13px;color:#3a4250"><i class="ph ph-check" style="color:#7a1f3d;margin-top:2px"></i>{{ f.t }}</div></sc-for>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="padding:14px 16px;font-weight:600;font-size:15px;border-bottom:1px solid #e4e7ec">Subscription invoices · October 2026</div>
+      <div style="overflow-x:auto"><div style="min-width:760px">
+        <sc-for list="{{ subInvoices }}" as="i" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:130px minmax(0,1.6fr) 100px 110px 140px;gap:12px;padding:11px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3">
+            <div class="n" style="color:#5b6474">{{ i.no }}</div><div style="font-weight:500">{{ i.client }}</div><div>{{ i.plan }}</div><div class="n" style="text-align:right;font-weight:500">{{ i.amount }}</div>
+            <div><span style="font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:{{ i.bg }};color:{{ i.fg }}">{{ i.status }}</span></div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isAudit }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+      <div><div style="font-size:13px;color:#5b6474">Security</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Audit log</h1></div>
+      <button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;color:#14171f;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-download-simple" style="font-size:16px"></i>Export CSV</button>
+    </div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden">
+      <div style="overflow-x:auto"><div style="min-width:900px">
+        <div style="display:grid;grid-template-columns:140px minmax(0,1fr) minmax(0,1.8fr) minmax(0,1fr) 120px;gap:12px;padding:10px 16px;font-size:12px;font-weight:500;color:#5b6474;background:#f9fafb;border-bottom:1px solid #e4e7ec"><div>Time</div><div>Who</div><div>What</div><div>Client</div><div>IP</div></div>
+        <sc-for list="{{ audit }}" as="e" hint-placeholder-count="10">
+          <div style="display:grid;grid-template-columns:140px minmax(0,1fr) minmax(0,1.8fr) minmax(0,1fr) 120px;gap:12px;padding:10px 16px;align-items:center;font-size:13.5px;border-bottom:1px solid #eef0f3">
+            <div class="n" style="color:#5b6474">{{ e.time }}</div><div style="font-weight:500">{{ e.actor }}</div>
+            <div style="display:flex;gap:8px;align-items:center"><i class="ph {{ e.icon }}" style="font-size:16px;color:{{ e.color }}"></i>{{ e.action }}</div>
+            <div style="color:#3a4250">{{ e.client }}</div><div class="n" style="color:#8a93a3;font-size:12.5px">{{ e.ip }}</div>
+          </div>
+        </sc-for>
+      </div></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isSecurity }}" hint-placeholder-val="{{ false }}">
+    <div style="margin-bottom:18px"><div style="font-size:13px;color:#5b6474">Security</div><h1 style="margin:2px 0 0;font-size:24px;font-weight:600;letter-spacing:-0.015em">Security policies</h1><p style="margin:6px 0 0;color:#5b6474;max-width:70ch">Platform-wide rules. Clients on Pro and Enterprise can make them stricter, never weaker.</p></div>
+    <div style="background:#fff;border:1px solid #e4e7ec;border-radius:12px;overflow:hidden;max-width:880px">
+      <sc-for list="{{ policies }}" as="p" hint-placeholder-count="7">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:14px 18px;border-bottom:1px solid #eef0f3">
+          <div><div style="font-weight:600">{{ p.title }}</div><div style="font-size:13px;color:#5b6474">{{ p.desc }}</div></div>
+          <sc-if value="{{ p.isToggle }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ p.toggle }}" role="switch" aria-checked="{{ p.on }}" aria-label="{{ p.title }}" style="position:relative;width:42px;height:24px;border:0;border-radius:999px;background:{{ p.track }};cursor:{{ p.cursor }};opacity:{{ p.op }};padding:0"><span style="position:absolute;top:3px;left:{{ p.knob }};width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transition:left 0.15s"></span></button>
+          </sc-if>
+          <sc-if value="{{ p.isValue }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;font-weight:500;padding:6px 10px;border-radius:8px;border:1px solid #d5d9e0">{{ p.value }}</span></sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  </main>
+</div>
+</div>
+
+<sc-if value="{{ clientOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeClient }}" style="position:fixed;inset:0;z-index:40;background:rgba(20,23,31,0.32)"></div>
+  <div style="position:fixed;top:0;right:0;bottom:0;z-index:41;width:min(680px,100vw);background:#fff;box-shadow:-12px 0 40px rgba(20,23,31,0.16);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:flex-start;gap:14px;padding:18px 24px;border-bottom:1px solid #e4e7ec">
+      <div style="width:46px;height:46px;flex:none;border-radius:10px;background:#f9eef2;color:#7a1f3d;display:grid;place-items:center;font-weight:700;font-size:15px">{{ cd.ini }}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:18px">{{ cd.name }}</div>
+        <div class="n" style="font-size:13px;color:#5b6474">{{ cd.flag }} {{ cd.country }} · {{ cd.vat }} · client since {{ cd.since }}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span style="font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;background:{{ cd.bg }};color:{{ cd.fg }}">{{ cd.statusLabel }}</span><span style="font-size:12px;font-weight:500;padding:2px 8px;border-radius:6px;background:#f0f2f5;color:#3a4250">{{ cd.plan }}</span></div>
+      </div>
+      <button onClick="{{ closeClient }}" aria-label="Close" style="width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-x" style="font-size:18px"></i></button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:22px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px 18px">
+        <sc-for list="{{ cd.facts }}" as="f" hint-placeholder-count="8"><div><div style="font-size:12px;color:#5b6474">{{ f.l }}</div><div class="n" style="font-size:14px;font-weight:500">{{ f.v }}</div></div></sc-for>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:8px">Modules</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ cd.modules }}" as="m" hint-placeholder-count="6"><button onClick="{{ m.toggle }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:8px;border:1px solid {{ m.border }};background:{{ m.bg }};color:{{ m.fg }};font:inherit;font-size:13px;font-weight:500;cursor:pointer"><i class="ph {{ m.icon }}"></i>{{ m.label }}</button></sc-for>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><div style="font-weight:600;font-size:14px">Users</div><button onClick="{{ openInvite }}" style="border:0;background:none;font:inherit;font-size:13px;font-weight:500;color:#7a1f3d;cursor:pointer">+ Invite user</button></div>
+        <div style="border:1px solid #e4e7ec;border-radius:10px;overflow:hidden">
+          <sc-for list="{{ cd.users }}" as="u" hint-placeholder-count="3">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) 110px 110px;gap:10px;padding:9px 12px;font-size:13.5px;border-bottom:1px solid #f0f2f5;align-items:center"><div><div style="font-weight:500">{{ u.name }}</div><div style="font-size:12px;color:#5b6474">{{ u.email }}</div></div><span style="font-size:12.5px">{{ u.role }}</span><span style="display:flex;gap:5px;align-items:center;font-size:12.5px;color:{{ u.mfaColor }}"><i class="ph {{ u.mfaIcon }}"></i>{{ u.mfa }}</span></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="padding:14px;border-radius:10px;background:#fcf5f7;border:1px solid #f1d5df;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:10px;align-items:flex-start"><i class="ph ph-headset" style="font-size:20px;color:#7a1f3d"></i><div><div style="font-weight:600">Support access</div><div style="font-size:13px;color:#5b6474">See the client’s administration as they see it, to help with a support question. Needs a reason, is limited to 60 minutes, and is shown to the client and in the audit log.</div></div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><input value="{{ reason }}" onChange="{{ onReason }}" placeholder="Reason, e.g. ticket #4412 — VAT box 4b question" style="flex:1;min-width:220px;height:36px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:13.5px;background:#fff"><button onClick="{{ impersonate }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-sign-in"></i>Open as support</button></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;padding:14px 24px;border-top:1px solid #e4e7ec">
+      <button onClick="{{ toggleSuspend }}" style="height:36px;padding:0 12px;border-radius:8px;border:0;background:transparent;color:#b42318;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#fdebea">{{ cd.suspendLabel }}</button>
+      <div style="display:flex;gap:8px"><button onClick="{{ notInProto }}" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#f3f5f8">Change plan</button><button onClick="{{ notInProto }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-pencil-simple"></i>Edit client</button></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ newOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeNew }}" style="position:fixed;inset:0;z-index:40;background:rgba(20,23,31,0.32)"></div>
+  <div style="position:fixed;top:0;right:0;bottom:0;z-index:41;width:min(600px,100vw);background:#fff;box-shadow:-12px 0 40px rgba(20,23,31,0.16);display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #e4e7ec"><div><div style="font-weight:600;font-size:18px">New client</div><div style="font-size:13px;color:#5b6474">Creates the administration and invites the owner</div></div><button onClick="{{ closeNew }}" aria-label="Close" style="width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:8px;background:transparent;cursor:pointer" style-hover="background:#f3f5f8"><i class="ph ph-x" style="font-size:18px"></i></button></div>
+    <div style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:18px">
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:500;color:#3a4250">Company name<input value="{{ nc.name }}" onChange="{{ nc.onName }}" placeholder="e.g. Maison Duret SAS" style="height:40px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:14px"></label>
+      <div>
+        <div style="font-size:13px;font-weight:500;color:#3a4250;margin-bottom:6px">Country of establishment</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ nc.countries }}" as="c" hint-placeholder-count="7"><button onClick="{{ c.pick }}" style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;height:34px;padding:0 12px;border-radius:8px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }};font:inherit;font-size:13.5px;font-weight:500;cursor:pointer">{{ c.flag }} {{ c.code }}</button></sc-for></div>
+        <div style="display:flex;gap:10px;margin-top:10px;padding:10px 12px;border-radius:9px;background:#fcf5f7;font-size:13px;color:#7a1f3d"><i class="ph ph-info" style="font-size:18px;flex:none"></i><span>{{ nc.regime }}</span></div>
+      </div>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:500;color:#3a4250">VAT number<input value="{{ nc.vat }}" onChange="{{ nc.onVat }}" placeholder="{{ nc.vatPh }}" style="height:40px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:14px"></label>
+      <div>
+        <div style="font-size:13px;font-weight:500;color:#3a4250;margin-bottom:6px">Plan</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px"><sc-for list="{{ nc.plans }}" as="p" hint-placeholder-count="4"><button onClick="{{ p.pick }}" style="text-align:left;padding:10px 12px;border-radius:9px;border:1px solid {{ p.border }};background:{{ p.bg }};box-shadow:{{ p.ring }};font:inherit;cursor:pointer;color:#14171f"><div style="font-weight:600">{{ p.name }}</div><div class="n" style="font-size:12.5px;color:#5b6474">{{ p.price }}</div></button></sc-for></div>
+        <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px;cursor:pointer"><input type="checkbox" checked="{{ nc.trial }}" onChange="{{ nc.toggleTrial }}" style="width:16px;height:16px;accent-color:#7a1f3d">Start with a 30-day free trial</label>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:500;color:#3a4250">Owner name<input value="{{ nc.owner }}" onChange="{{ nc.onOwner }}" style="height:40px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:14px"></label>
+        <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:500;color:#3a4250">Owner email<input value="{{ nc.ownerEmail }}" onChange="{{ nc.onOwnerEmail }}" style="height:40px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:14px"></label>
+      </div>
+      <div style="display:flex;gap:10px;padding:10px 12px;border-radius:9px;background:#f5f6f8;font-size:13px;color:#3a4250"><i class="ph ph-shield-check" style="font-size:18px;color:#157347;flex:none"></i><span>The owner gets an invite in {{ nc.langName }} and must set up two-factor authentication on first sign-in.</span></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:14px 24px;border-top:1px solid #e4e7ec"><button onClick="{{ closeNew }}" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer">Cancel</button><button onClick="{{ createClient }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730"><i class="ph ph-paper-plane-tilt"></i>Create &amp; send invite</button></div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ inviteOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeInvite }}" style="position:fixed;inset:0;z-index:50;background:rgba(20,23,31,0.36);display:grid;place-items:center;padding:20px">
+    <div onClick="{{ stop }}" style="width:min(460px,100%);background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(20,23,31,0.25);padding:22px;display:flex;flex-direction:column;gap:14px">
+      <div style="font-weight:600;font-size:18px">Invite a user</div>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:500;color:#3a4250">Email<input value="{{ inv.email }}" onChange="{{ inv.onEmail }}" placeholder="name@company.com" style="height:40px;padding:0 10px;border:1px solid #d5d9e0;border-radius:8px;font:inherit;font-size:14px"></label>
+      <div style="font-size:13px;color:#3a4250">Client: <b style="font-weight:600">{{ inv.client }}</b></div>
+      <div><div style="font-size:13px;font-weight:500;color:#3a4250;margin-bottom:6px">Role</div><div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ inv.roles }}" as="r" hint-placeholder-count="6"><button onClick="{{ r.pick }}" style="height:32px;padding:0 11px;border-radius:8px;border:1px solid {{ r.border }};background:{{ r.bg }};color:{{ r.fg }};font:inherit;font-size:13px;font-weight:500;cursor:pointer">{{ r.name }}</button></sc-for></div><div style="font-size:12.5px;color:#5b6474;margin-top:8px">{{ inv.roleDesc }}</div></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px"><button onClick="{{ closeInvite }}" style="height:36px;padding:0 14px;border-radius:8px;border:1px solid #d5d9e0;background:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer">Cancel</button><button onClick="{{ sendInvite }}" style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:8px;border:1px solid #7a1f3d;background:#7a1f3d;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer" style-hover="background:#5f1730">Send invite</button></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;display:flex;gap:10px;align-items:center;padding:12px 16px;background:#14171f;color:#fff;border-radius:10px;box-shadow:0 12px 32px rgba(20,23,31,0.25);font-size:14px;max-width:min(560px,calc(100vw - 48px))"><i class="ph ph-check-circle" style="font-size:20px;color:#5fd39a"></i>{{ toast }}</div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;overview&quot;,&quot;clients&quot;,&quot;users&quot;,&quot;roles&quot;,&quot;billing&quot;,&quot;audit&quot;,&quot;security&quot;],&quot;default&quot;:&quot;overview&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  static COL = { green: ['#e6f6ee', '#157347'], blue: ['#e8f0fb', '#1f4f8f'], amber: ['#fff3dc', '#9a5b00'], red: ['#fdebea', '#b42318'], gray: ['#f0f2f5', '#4b5563'], wine: ['#f8e9ee', '#7a1f3d'] };
+  static COUNTRIES = { NL: ['🇳🇱', 'Netherlands', 'Dutch excise (Douane) · NL VAT return · RGS chart of accounts', 'NL123456789B01', 'Dutch'], BE: ['🇧🇪', 'Belgium', 'Belgian excise (AAD&A) · BE VAT return · PCMN chart', 'BE0123456789', 'Dutch or French'], FR: ['🇫🇷', 'France', 'French excise (DGDDI) · CA3 VAT return · PCG chart', 'FR12345678901', 'French'], DE: ['🇩🇪', 'Germany', 'German excise (Zoll) · UStVA · SKR03/SKR04 chart', 'DE123456789', 'German'], IT: ['🇮🇹', 'Italy', 'Italian excise (ADM) · LIPE · Italian chart', 'IT12345678901', 'Italian'], ES: ['🇪🇸', 'Spain', 'Spanish excise (AEAT) · Modelo 303 · PGC chart', 'ESB12345678', 'Spanish'], PL: ['🇵🇱', 'Poland', 'Polish excise (KAS) · JPK_V7 · Polish chart', 'PL1234567890', 'Polish'] };
+  static PLANS = { Starter: ['€49', 'per month', ['1 administration', '3 users', 'Sales, purchases, bank', 'Email support']], Business: ['€149', 'per month', ['1 administration', '10 users', 'Stock, excise & customs', 'Multi-currency']], Pro: ['€249', 'per month', ['3 administrations', 'Unlimited users', 'EMCS & customs links', 'Stricter security policies']], Enterprise: ['Custom', 'annual contract', ['Unlimited administrations', 'SSO (SAML)', 'Dedicated support', 'Custom data region']] };
+  static ROLES = [['Owner', 'Everything, including billing and users.'], ['Admin', 'Everything except billing and deleting the administration.'], ['Bookkeeper', 'Books sales, purchases, bank and costs. Prepares VAT and excise returns.'], ['Warehouse', 'Stock, products, shipments and receipts. No financial figures.'], ['Accountant', 'External accountant. Views everything, files VAT returns, exports for year-end.'], ['Read-only', 'Can view dashboards and reports only.']];
+  state = {
+    screen: null, clientTab: 'All', userTab: 'All', clientSel: null, reason: '', newOpen: false, inviteOpen: false, toast: null,
+    nc: { name: '', country: 'FR', vat: '', plan: 'Business', trial: true, owner: '', ownerEmail: '' }, inv: { email: '', role: 'Bookkeeper' },
+    clients: [
+      { id: 'vh', name: 'Vale & Hart Drinks B.V.', cc: 'NL', vat: 'NL862204117B01', plan: 'Pro', mrr: 249, last: 'Today, 09:12', status: 'Active', since: 'Mar 2025', mods: ['excise', 'customs', 'fx', 'emcs'] },
+      { id: 'kr', name: 'Weinhandel Krüger GmbH', cc: 'DE', vat: 'DE298441207', plan: 'Pro', mrr: 249, last: 'Today, 08:40', status: 'Active', since: 'Jun 2025', mods: ['excise', 'customs', 'fx'] },
+      { id: 'md', name: 'Maison Duret SAS', cc: 'FR', vat: 'FR40841220077', plan: 'Pro', mrr: 249, last: 'Yesterday', status: 'Active', since: 'Jan 2026', mods: ['excise', 'customs', 'emcs'] },
+      { id: 'dk', name: 'Brouwerij De Kroon NV', cc: 'BE', vat: 'BE0412339081', plan: 'Business', mrr: 149, last: 'Today, 07:55', status: 'Active', since: 'Sep 2025', mods: ['excise'] },
+      { id: 'ba', name: 'Bodegas Altamira S.L.', cc: 'ES', vat: 'ESB26043318', plan: 'Business', mrr: 149, last: '3 days ago', status: 'Active', since: 'Nov 2025', mods: ['excise', 'fx'] },
+      { id: 'wi', name: 'Hurtownia Napojów Wisła Sp. z o.o.', cc: 'PL', vat: 'PL5272849103', plan: 'Business', mrr: 149, last: '6 days ago', status: 'Past due', since: 'Feb 2026', mods: ['excise'] },
+      { id: 'fc', name: 'Fonte Chiara S.p.A.', cc: 'IT', vat: 'IT03918250046', plan: 'Business', mrr: 149, last: '21 days ago', status: 'Suspended', since: 'Apr 2026', mods: [] },
+      { id: 'cr', name: 'Cantina Rossi S.r.l.', cc: 'IT', vat: 'IT02184410219', plan: 'Starter', mrr: 0, last: 'Today, 10:02', status: 'Trial', trialLeft: 12, since: 'Sep 2026', mods: [] },
+      { id: 'lu', name: 'Lumo Drinks B.V.', cc: 'NL', vat: 'NL004412871B01', plan: 'Business', mrr: 0, last: 'Yesterday', status: 'Trial', trialLeft: 4, since: 'Sep 2026', mods: ['fx'] },
+    ],
+    users: [
+      { id: 1, name: 'Marta Visser', email: 'marta@valehart.nl', client: 'vh', role: 'Owner', mfa: 'Passkey', last: 'Today, 09:12', status: 'Active' },
+      { id: 2, name: 'Joost de Wit', email: 'joost@valehart.nl', client: 'vh', role: 'Warehouse', mfa: 'App', last: 'Today, 08:03', status: 'Active' },
+      { id: 3, name: 'Eva Bakker', email: 'eva@bakker-accountants.nl', client: 'vh', role: 'Accountant', mfa: 'App', last: '2 days ago', status: 'Active' },
+      { id: 4, name: 'Lars Kim', email: 'lars@valehart.nl', client: 'vh', role: 'Bookkeeper', mfa: 'None', last: '—', status: 'Invited' },
+      { id: 5, name: 'Thomas Krüger', email: 't.krueger@weinhandel-krueger.de', client: 'kr', role: 'Owner', mfa: 'App', last: 'Today, 08:40', status: 'Active' },
+      { id: 6, name: 'Sabine Hoff', email: 's.hoff@weinhandel-krueger.de', client: 'kr', role: 'Bookkeeper', mfa: 'SMS', last: 'Today, 07:31', status: 'Locked', why: '5 failed 2FA attempts' },
+      { id: 7, name: 'Camille Duret', email: 'camille@maisonduret.fr', client: 'md', role: 'Owner', mfa: 'Passkey', last: 'Yesterday', status: 'Active' },
+      { id: 8, name: 'Pieter Claes', email: 'pieter@dekroon.be', client: 'dk', role: 'Admin', mfa: 'App', last: 'Today, 07:55', status: 'Active' },
+      { id: 9, name: 'Lucía Ortega', email: 'lucia@bodegasaltamira.es', client: 'ba', role: 'Owner', mfa: 'App', last: '3 days ago', status: 'Active' },
+      { id: 10, name: 'Marek Nowak', email: 'marek@hurtowniawisla.pl', client: 'wi', role: 'Owner', mfa: 'SMS', last: '6 days ago', status: 'Active' },
+      { id: 11, name: 'Giulia Rossi', email: 'giulia@cantinarossi.it', client: 'cr', role: 'Owner', mfa: 'App', last: 'Today, 10:02', status: 'Active' },
+      { id: 12, name: 'Ruben Janssen', email: 'ruben@liquidledger.app', client: 'staff', role: 'Super admin', mfa: 'Passkey', last: 'Now', status: 'Active' },
+      { id: 13, name: 'Noor El Amrani', email: 'noor@liquidledger.app', client: 'staff', role: 'Support', mfa: 'Passkey', last: 'Today, 09:40', status: 'Active' },
+    ],
+    policies: { enforce2fa: true, staffPasskey: true, trust30: true, newDevice: true, ipAllow: false, sso: true },
+  };
+  componentWillUnmount() { clearTimeout(this._tt); }
+  say(m) { clearTimeout(this._tt); this.setState({ toast: m }); this._tt = setTimeout(() => this.setState({ toast: null }), 3800); }
+  go(screen) { this.setState({ screen, clientSel: null }); window.scrollTo(0, 0); }
+  tabs(list, active, key) { return list.map(([k, label, count]) => ({ label, count, fg: active === k ? '#7a1f3d' : '#5b6474', line: active === k ? '#7a1f3d' : 'transparent', pick: () => this.setState({ [key]: k }) })); }
+  pill(n) { const c = Component.COL[n]; return { bg: c[0], fg: c[1] }; }
+  ini(n) { return n.replace(/[^A-Za-zÀ-ž ]/g, '').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase(); }
+  mfaView(m) { return m === 'None' ? { mfa: 'Not set up', mfaIcon: 'ph-warning', mfaColor: '#9a5b00' } : { mfa: m === 'App' ? 'Authenticator' : m, mfaIcon: m === 'Passkey' ? 'ph-fingerprint' : m === 'SMS' ? 'ph-chat-text' : 'ph-device-mobile', mfaColor: '#157347' }; }
+  setUser(id, patch) { this.setState(s => ({ users: s.users.map(u => u.id === id ? { ...u, ...patch } : u) })); }
+  renderVals() {
+    const S = this.state, C = Component.COUNTRIES;
+    const screen = S.screen ?? this.props.startScreen ?? 'overview';
+    const cName = id => id === 'staff' ? 'Liquid Ledger (staff)' : (S.clients.find(c => c.id === id) || {}).name || '';
+    const stCol = { Active: 'green', Trial: 'blue', 'Past due': 'amber', Suspended: 'red' };
+    const clientView = c => ({ ...c, ini: this.ini(c.name), flag: C[c.cc][0], country: C[c.cc][1], users: S.users.filter(u => u.client === c.id).length + (c.id === 'vh' ? 2 : c.id === 'kr' ? 7 : c.id === 'md' ? 6 : c.id === 'dk' ? 3 : c.id === 'ba' ? 4 : c.id === 'wi' ? 2 : 0), mrrF: c.mrr ? '€' + c.mrr : '—', statusLabel: c.status === 'Trial' ? `Trial · ${c.trialLeft} days left` : c.status, ...this.pill(stCol[c.status]) });
+    const allClients = S.clients.map(clientView);
+    const ctab = S.clientTab;
+    const clients = allClients.filter(c => ctab === 'All' || c.status === ctab).map(c => ({ ...c, open: () => this.setState({ clientSel: c.id, reason: '' }) }));
+    const ustCol = { Active: 'green', Invited: 'blue', Locked: 'red', Disabled: 'gray' };
+    const utab = S.userTab;
+    const ufilter = u => utab === 'All' ? u.client !== 'staff' : utab === 'Staff' ? u.client === 'staff' : utab === 'No 2FA' ? u.mfa === 'None' : u.status === utab;
+    const users = S.users.filter(ufilter).map(u => ({ ...u, ...this.mfaView(u.mfa), ini: this.ini(u.name), client: cName(u.client), ...this.pill(ustCol[u.status]),
+      canResend: u.status === 'Invited', canUnlock: u.status === 'Locked', canReset: u.status === 'Active' && u.mfa !== 'None' && u.client !== 'staff',
+      resend: () => this.say(`Invite sent again to ${u.email}.`),
+      unlock: () => { this.setUser(u.id, { status: 'Active' }); this.say(`${u.name} unlocked · they must verify 2FA again on next sign-in.`); },
+      reset: () => { this.setUser(u.id, { mfa: 'None' }); this.say(`2FA reset for ${u.name} · they’ll set it up again on next sign-in. Logged in audit trail.`); },
+      more: () => this.say('More: change role, disable user, sign out all sessions.') }));
+    const sel = S.clientSel && S.clients.find(c => c.id === S.clientSel);
+    const modDefs = [['excise', 'Excise', 'ph-seal-check'], ['customs', 'Customs', 'ph-anchor'], ['emcs', 'EMCS link', 'ph-arrows-left-right'], ['fx', 'Multi-currency', 'ph-currency-circle-dollar'], ['payroll', 'Payroll import', 'ph-users-three'], ['api', 'API access', 'ph-plugs']];
+    const cd = sel ? (() => { const v = clientView(sel); return { ...v, since: sel.since, suspendLabel: sel.status === 'Suspended' ? 'Reactivate client' : 'Suspend client',
+      facts: [['Plan', sel.plan], ['MRR', v.mrrF], ['Users', String(v.users)], ['Administrations', sel.plan === 'Pro' ? '1 of 3' : '1 of 1'], ['Last active', sel.last], ['Data region', 'EU · Frankfurt'], ['Tax regime', C[sel.cc][2].split(' · ')[1]], ['Storage', sel.plan === 'Pro' ? '3.2 GB' : '0.8 GB']].map(([l, v2]) => ({ l, v: v2 })),
+      modules: modDefs.map(([k, label, icon]) => { const on = sel.mods.includes(k); return { label, icon, border: on ? '#7a1f3d' : '#d5d9e0', bg: on ? '#f9eef2' : '#fff', fg: on ? '#7a1f3d' : '#5b6474', toggle: () => this.setState(s => ({ clients: s.clients.map(c => c.id === sel.id ? { ...c, mods: on ? c.mods.filter(m => m !== k) : [...c.mods, k] } : c) })) }; }),
+      users: S.users.filter(u => u.client === sel.id).map(u => ({ ...u, ...this.mfaView(u.mfa) })) }; })() : { facts: [], modules: [], users: [] };
+    const nc = S.nc, ncC = C[nc.country];
+    const setNc = p => this.setState(s => ({ nc: { ...s.nc, ...p } }));
+    const roleIdx = Component.ROLES.findIndex(r => r[0] === S.inv.role);
+    const P = [
+      ['Bookkeeping', null], ['Sales invoices', 'FFFVFV'], ['Purchases & receipts', 'FFFFVV'.replace(/^(...)F/, '$1F')], ['Bank reconciliation', 'FFFNVV'], ['Products & stock', 'FFVFVV'],
+      ['Tax & filing', null], ['File VAT return', 'FFNNFN'], ['File excise return', 'FFFNVN'], ['Customs & EMCS documents', 'FFFFVN'],
+      ['Administration', null], ['Reports & exports', 'FFFNFV'], ['Users & roles', 'FFNNNN'], ['Billing & plan', 'FNNNNN'], ['Delete administration', 'FNNNNN'],
+    ];
+    const cellOf = ch => ch === 'F' ? { icon: 'ph-fill ph-check-circle', color: '#157347' } : ch === 'V' ? { icon: 'ph-eye', color: '#1f4f8f' } : { icon: 'ph-minus', color: '#c4cbd6' };
+    const audit = [
+      ['10:04', 'Giulia Rossi', 'Signed in · authenticator app', 'Cantina Rossi S.r.l.', '93.41.12.208', 'ph-sign-in', '#157347'],
+      ['09:40', 'Noor El Amrani', 'Opened support access · ticket #4407 · 60 min', 'Vale & Hart Drinks B.V.', '185.12.4.71', 'ph-headset', '#7a1f3d'],
+      ['09:12', 'Marta Visser', 'Signed in · passkey · trusted device', 'Vale & Hart Drinks B.V.', '84.26.190.3', 'ph-sign-in', '#157347'],
+      ['08:52', 'Marta Visser', 'Filed excise return September · €16,037.40', 'Vale & Hart Drinks B.V.', '84.26.190.3', 'ph-seal-check', '#1f4f8f'],
+      ['07:31', 'Sabine Hoff', 'Account locked · 5 failed 2FA attempts', 'Weinhandel Krüger GmbH', '91.64.7.122', 'ph-lock-simple', '#b42318'],
+      ['07:02', 'System', 'Trial ending in 4 days · reminder sent', 'Lumo Drinks B.V.', '—', 'ph-bell', '#9a5b00'],
+      ['Yesterday', 'Ruben Janssen', 'Changed plan Business → Pro', 'Maison Duret SAS', '185.12.4.70', 'ph-arrow-up', '#1f4f8f'],
+      ['Yesterday', 'System', 'Payment failed · card expired · retry in 3 days', 'Hurtownia Napojów Wisła', '—', 'ph-credit-card', '#9a5b00'],
+      ['Yesterday', 'Marta Visser', 'Invited lars@valehart.nl as Bookkeeper', 'Vale & Hart Drinks B.V.', '84.26.190.3', 'ph-user-plus', '#1f4f8f'],
+      ['5 Oct', 'Ruben Janssen', 'Updated NL spirits excise rate (effective 1 Jan 2027)', 'All NL clients', '185.12.4.70', 'ph-sliders', '#7a1f3d'],
+    ].map(([time, actor, action, client, ip, icon, color]) => ({ time, actor, action, client, ip, icon, color }));
+    const noMfa = S.users.filter(u => u.mfa === 'None' && u.status === 'Active').length + S.users.filter(u => u.mfa === 'None' && u.status !== 'Active').length;
+    const locked = S.users.filter(u => u.status === 'Locked').length;
+    const pol = S.policies, setPol = k => () => this.setState(s => ({ policies: { ...s.policies, [k]: !s.policies[k] } }));
+    const mrr = S.clients.reduce((a, c) => a + (c.status === 'Active' || c.status === 'Past due' ? c.mrr : 0), 0);
+    const countries = Object.keys(C).map(cc => ({ cc, n: S.clients.filter(c => c.cc === cc).length }));
+    return {
+      nav: [['overview', 'Overview', 'ph-squares-four'], ['clients', 'Clients', 'ph-buildings', S.clients.filter(c => c.status === 'Past due' || c.status === 'Suspended').length], ['users', 'Users', 'ph-users', locked], ['roles', 'Roles & permissions', 'ph-key'], ['billing', 'Plans & billing', 'ph-credit-card'], ['audit', 'Audit log', 'ph-list-magnifying-glass'], ['security', 'Security policies', 'ph-shield-check']].map(([k, label, icon, badge]) => ({ label, icon, badge, hasBadge: !!badge, bg: screen === k ? '#33212a' : 'transparent', fg: screen === k ? '#fff' : '#d6c6cd', weight: screen === k ? 600 : 400, edge: screen === k ? 'inset 3px 0 0 #c45b7e' : 'none', go: () => this.go(k) })),
+      isOverview: screen === 'overview', isClients: screen === 'clients', isUsers: screen === 'users', isRoles: screen === 'roles', isBilling: screen === 'billing', isAudit: screen === 'audit', isSecurity: screen === 'security',
+      notInProto: () => this.say('Not part of this prototype yet.'), goAudit: () => this.go('audit'),
+      kpis: [
+        { icon: 'ph-buildings', label: 'Active clients', value: String(S.clients.filter(c => c.status === 'Active').length), note: `${S.clients.filter(c => c.status === 'Trial').length} on trial`, noteColor: '#5b6474' },
+        { icon: 'ph-users', label: 'Users', value: '41', note: `${noMfa} without 2FA yet`, noteColor: noMfa ? '#9a5b00' : '#157347' },
+        { icon: 'ph-chart-line-up', label: 'Monthly recurring revenue', value: '€' + mrr.toLocaleString('en-GB'), note: '+€249 this month', noteColor: '#157347' },
+        { icon: 'ph-hourglass-medium', label: 'Trials ending in 7 days', value: String(S.clients.filter(c => c.status === 'Trial' && c.trialLeft <= 7).length), note: 'Lumo Drinks · 4 days', noteColor: '#5b6474' },
+      ],
+      attention: [
+        S.clients.some(c => c.status === 'Past due') && { icon: 'ph-credit-card', ...this.pill('amber'), title: 'Payment failed · Hurtownia Napojów Wisła', meta: 'Card expired · automatic retry in 3 days', go: () => this.setState({ screen: 'clients', clientSel: 'wi' }) },
+        locked && { icon: 'ph-lock-simple', ...this.pill('red'), title: `${locked} user locked out`, meta: 'Sabine Hoff · 5 failed 2FA attempts', go: () => this.setState({ screen: 'users', userTab: 'Locked' }) },
+        noMfa && { icon: 'ph-shield-warning', ...this.pill('amber'), title: `${noMfa} user without 2FA`, meta: 'Pending invite · must set up on first sign-in', go: () => this.setState({ screen: 'users', userTab: 'No 2FA' }) },
+        { icon: 'ph-hourglass-medium', ...this.pill('blue'), title: 'Trial ends in 4 days · Lumo Drinks B.V.', meta: 'Active daily · good conversion candidate', go: () => this.setState({ screen: 'clients', clientSel: 'lu' }) },
+      ].filter(Boolean),
+      byCountry: countries.map(c => ({ name: C[c.cc][0] + ' ' + C[c.cc][1], n: c.n, w: (c.n / 2 * 100) + '%' })),
+      auditShort: audit.slice(0, 5),
+      clientTabs: this.tabs(['All', 'Active', 'Trial', 'Past due', 'Suspended'].map(k => [k, k, k === 'All' ? S.clients.length : S.clients.filter(c => c.status === k).length]), ctab, 'clientTab'),
+      clients,
+      userTabs: this.tabs([['All', 'Client users', S.users.filter(u => u.client !== 'staff').length], ['Invited', 'Invited', S.users.filter(u => u.status === 'Invited').length], ['Locked', 'Locked', locked], ['No 2FA', 'No 2FA', S.users.filter(u => u.mfa === 'None').length], ['Staff', 'Platform staff', S.users.filter(u => u.client === 'staff').length]], utab, 'userTab'),
+      users,
+      roleCols: Component.ROLES.map(([name], i) => ({ name, n: [9, 4, 12, 6, 7, 3][i] })),
+      perms: P.map(([label, cells]) => ({ label, w: cells ? 400 : 600, labelColor: cells ? '#14171f' : '#5b6474', rowBg: cells ? '#fff' : '#f9fafb', cells: cells ? cells.split('').map(cellOf) : [] })),
+      plans: Object.entries(Component.PLANS).map(([name, [price, per, f]]) => ({ name, price, per, clients: S.clients.filter(c => c.plan === name).length, border: name === 'Pro' ? '#7a1f3d' : '#e4e7ec', features: f.map(t => ({ t })) })),
+      subInvoices: S.clients.filter(c => c.mrr).map((c, i) => ({ no: 'LL-2026-10-' + String(101 + i), client: c.name, plan: c.plan, amount: '€' + c.mrr + '.00', status: c.status === 'Past due' ? 'Failed · retrying' : c.status === 'Suspended' ? 'Unpaid' : 'Paid', ...this.pill(c.status === 'Past due' ? 'amber' : c.status === 'Suspended' ? 'red' : 'green') })),
+      audit,
+      policies: [
+        ['enforce2fa', 'Require two-factor authentication for every user', 'Users can’t open an administration until 2FA is set up. Authenticator app, SMS or passkey.', true],
+        ['staffPasskey', 'Platform staff must use a passkey', 'Phishing-resistant sign-in for everyone with support or admin access.', true],
+        ['trust30', 'Allow “trust this device” for 30 days', 'Skips the 2FA code on known devices. The password is still required.'],
+        ['newDevice', 'Email users about sign-ins from a new device', 'Includes location and a one-click “this wasn’t me” lock.'],
+        ['ipAllow', 'IP allow-list for platform staff', 'Only allow admin console access from office and VPN addresses.'],
+        ['sso', 'Allow SSO (SAML) on Enterprise', 'Clients can connect Microsoft Entra ID, Google Workspace or Okta.'],
+      ].map(([k, title, desc, locked2]) => ({ title, desc, isToggle: true, isValue: false, on: pol[k], track: pol[k] ? '#7a1f3d' : '#d5d9e0', knob: pol[k] ? '21px' : '3px', op: locked2 ? 0.75 : 1, cursor: locked2 ? 'not-allowed' : 'pointer', toggle: locked2 ? () => this.say('This policy is required and can’t be switched off.') : setPol(k) }))
+        .concat([['Session timeout', 'Users are signed out after inactivity.', '30 minutes'], ['Lockout', 'Account locks after failed password or 2FA attempts.', '5 attempts · 15 min'], ['Data region', 'Where client data and documents are stored.', 'EU · Frankfurt']].map(([title, desc, value]) => ({ title, desc, value, isToggle: false, isValue: true }))),
+      clientOpen: !!sel, cd, closeClient: () => this.setState({ clientSel: null }),
+      reason: S.reason, onReason: e => this.setState({ reason: e.target.value }),
+      impersonate: () => { if (!S.reason.trim()) { this.say('Add a reason first — it’s shown to the client and logged.'); return; } this.say(`Support session opened for ${sel.name} · 60 min · client notified.`); this.setState({ reason: '' }); },
+      toggleSuspend: () => { const to = sel.status === 'Suspended' ? 'Active' : 'Suspended'; this.setState(s => ({ clients: s.clients.map(c => c.id === sel.id ? { ...c, status: to } : c) })); this.say(to === 'Suspended' ? `${sel.name} suspended · users can still export their data.` : `${sel.name} reactivated.`); },
+      openNewClient: () => this.setState({ newOpen: true }), closeNew: () => this.setState({ newOpen: false }),
+      newOpen: S.newOpen,
+      nc: { ...nc, regime: 'Sets up: ' + ncC[2] + '.', vatPh: 'e.g. ' + ncC[3], langName: ncC[4],
+        onName: e => setNc({ name: e.target.value }), onVat: e => setNc({ vat: e.target.value }), onOwner: e => setNc({ owner: e.target.value }), onOwnerEmail: e => setNc({ ownerEmail: e.target.value }), toggleTrial: () => setNc({ trial: !nc.trial }),
+        countries: Object.entries(C).map(([code, v]) => ({ code, flag: v[0], border: nc.country === code ? '#7a1f3d' : '#d5d9e0', bg: nc.country === code ? '#7a1f3d' : '#fff', fg: nc.country === code ? '#fff' : '#14171f', pick: () => setNc({ country: code }) })),
+        plans: Object.entries(Component.PLANS).map(([name, [price, per]]) => ({ name, price: price + (per === 'per month' ? ' / mo' : ''), border: nc.plan === name ? '#7a1f3d' : '#e4e7ec', bg: nc.plan === name ? '#fcf5f7' : '#fff', ring: nc.plan === name ? '0 0 0 3px #f1d5df' : 'none', pick: () => setNc({ plan: name }) })) },
+      createClient: () => { const name = nc.name.trim() || 'New client'; const id = 'n' + Date.now(); this.setState(s => ({ newOpen: false, screen: 'clients', clientTab: 'All', clients: [{ id, name, cc: nc.country, vat: nc.vat || C[nc.country][3], plan: nc.plan, mrr: nc.trial ? 0 : parseInt(Component.PLANS[nc.plan][0].replace(/\D/g, '')) || 0, last: '—', status: nc.trial ? 'Trial' : 'Active', trialLeft: 30, since: 'Oct 2026', mods: [] }, ...s.clients], nc: { name: '', country: 'FR', vat: '', plan: 'Business', trial: true, owner: '', ownerEmail: '' } })); this.say(`${name} created · invite sent to ${nc.ownerEmail || 'the owner'}.`); },
+      inviteOpen: S.inviteOpen, openInvite: () => this.setState({ inviteOpen: true }), closeInvite: () => this.setState({ inviteOpen: false }), stop: e => e.stopPropagation(),
+      inv: { ...S.inv, client: sel ? sel.name : 'Vale & Hart Drinks B.V.', roleDesc: Component.ROLES[roleIdx][1], onEmail: e => this.setState(s => ({ inv: { ...s.inv, email: e.target.value } })),
+        roles: Component.ROLES.map(([name]) => ({ name, border: S.inv.role === name ? '#7a1f3d' : '#d5d9e0', bg: S.inv.role === name ? '#7a1f3d' : '#fff', fg: S.inv.role === name ? '#fff' : '#14171f', pick: () => this.setState(s => ({ inv: { ...s.inv, role: name } })) })) },
+      sendInvite: () => { const email = S.inv.email.trim() || 'new.user@company.com'; const clientId = sel ? sel.id : 'vh'; this.setState(s => ({ inviteOpen: false, inv: { email: '', role: 'Bookkeeper' }, users: [...s.users, { id: Date.now(), name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, m => m.toUpperCase()), email, client: clientId, role: S.inv.role, mfa: 'None', last: '—', status: 'Invited' }] })); this.say(`Invite sent to ${email} as ${S.inv.role} · 2FA required on first sign-in.`); },
+      hasToast: !!S.toast, toast: S.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -6,6 +6,7 @@ import { COOKIE, deleteCookie, getCookie } from "@/lib/auth/cookies";
 import { sha256 } from "@/lib/crypto";
 import { isLocale } from "@/i18n/config";
 import { audit } from "@/lib/audit";
+import { endSupportSessionFromApp } from "@/lib/admin/support";
 
 export async function switchAdministration(administrationId: string) {
   const s = await getUserSession();
@@ -34,6 +35,11 @@ export async function signOut() {
 /** Leave the read-only support view of a client app. */
 export async function endSupportView() {
   const token = await getCookie(COOKIE.support);
-  if (token) await prisma.session.updateMany({ where: { tokenHash: sha256(token) }, data: { revokedAt: new Date() } });
+  if (token) {
+    const s = await prisma.session.findUnique({ where: { tokenHash: sha256(token) } });
+    await prisma.session.updateMany({ where: { tokenHash: sha256(token) }, data: { revokedAt: new Date() } });
+    // Ending the view also ends the time-boxed support session (and its audit trail).
+    if (s?.kind === "STAFF" && s.staffId && s.supportSessionId) await endSupportSessionFromApp(s.supportSessionId, s.staffId);
+  }
   await deleteCookie(COOKIE.support);
 }

@@ -2,7 +2,7 @@ import { useId } from "react";
 
 /** The end-on barrel mark (48×48 geometry from the handoff). */
 export function Logo({ size = 34, inverted = false }: { size?: number; inverted?: boolean }) {
-  const id = useId().replace(/:/g, "");
+  const id = useId().replace(/[^a-zA-Z0-9]/g, "");
   const fg = inverted ? "#7a1f3d" : "#fff";
   const bg = inverted ? "#fff" : "#7a1f3d";
   return (
