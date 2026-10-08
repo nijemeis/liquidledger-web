@@ -3,6 +3,17 @@ import { ns } from "../types";
 // Shell, navigation and shared words. Generated from the prototype's I18N table, then extended.
 export default ns({
   en: {
+    "period": {
+      "label": "Period",
+      "year": "This year ({year})",
+      "lastYear": "Last year ({year})",
+      "d30": "Last 30 days",
+      "d90": "Last 90 days",
+      "all": "All time",
+      "monthsOf": "Months · {year}",
+      "showing": "Showing {period}",
+      "none": "Nothing in this period. Choose another period above."
+    },
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
     "nav": {
@@ -90,6 +101,17 @@ export default ns({
     "never": "Never"
   },
   nl: {
+    "period": {
+      "label": "Periode",
+      "year": "Dit jaar ({year})",
+      "lastYear": "Vorig jaar ({year})",
+      "d30": "Laatste 30 dagen",
+      "d90": "Laatste 90 dagen",
+      "all": "Alles",
+      "monthsOf": "Maanden · {year}",
+      "showing": "Periode: {period}",
+      "none": "Niets in deze periode. Kies hierboven een andere periode."
+    },
     "collapse": "Zijbalk inklappen",
     "expand": "Zijbalk uitklappen",
     "nav": {
@@ -177,6 +199,17 @@ export default ns({
     "never": "Nooit"
   },
   fr: {
+    "period": {
+      "label": "Période",
+      "year": "Cette année ({year})",
+      "lastYear": "Année dernière ({year})",
+      "d30": "30 derniers jours",
+      "d90": "90 derniers jours",
+      "all": "Tout",
+      "monthsOf": "Mois · {year}",
+      "showing": "Période : {period}",
+      "none": "Rien sur cette période. Choisissez une autre période ci-dessus."
+    },
     "collapse": "Réduire la barre latérale",
     "expand": "Agrandir la barre latérale",
     "nav": {
@@ -264,6 +297,17 @@ export default ns({
     "never": "Jamais"
   },
   de: {
+    "period": {
+      "label": "Zeitraum",
+      "year": "Dieses Jahr ({year})",
+      "lastYear": "Letztes Jahr ({year})",
+      "d30": "Letzte 30 Tage",
+      "d90": "Letzte 90 Tage",
+      "all": "Gesamter Zeitraum",
+      "monthsOf": "Monate · {year}",
+      "showing": "Zeitraum: {period}",
+      "none": "Nichts in diesem Zeitraum. Wählen Sie oben einen anderen Zeitraum."
+    },
     "collapse": "Seitenleiste einklappen",
     "expand": "Seitenleiste ausklappen",
     "nav": {
@@ -351,6 +395,17 @@ export default ns({
     "never": "Nie"
   },
   it: {
+    "period": {
+      "label": "Periodo",
+      "year": "Quest’anno ({year})",
+      "lastYear": "Anno scorso ({year})",
+      "d30": "Ultimi 30 giorni",
+      "d90": "Ultimi 90 giorni",
+      "all": "Tutto",
+      "monthsOf": "Mesi · {year}",
+      "showing": "Periodo: {period}",
+      "none": "Niente in questo periodo. Scegli un altro periodo qui sopra."
+    },
     "collapse": "Comprimi barra laterale",
     "expand": "Espandi barra laterale",
     "nav": {
@@ -438,6 +493,17 @@ export default ns({
     "never": "Mai"
   },
   es: {
+    "period": {
+      "label": "Periodo",
+      "year": "Este año ({year})",
+      "lastYear": "Año pasado ({year})",
+      "d30": "Últimos 30 días",
+      "d90": "Últimos 90 días",
+      "all": "Todo",
+      "monthsOf": "Meses · {year}",
+      "showing": "Periodo: {period}",
+      "none": "Nada en este periodo. Elige otro periodo arriba."
+    },
     "collapse": "Contraer barra lateral",
     "expand": "Expandir barra lateral",
     "nav": {
@@ -525,6 +591,17 @@ export default ns({
     "never": "Nunca"
   },
   pl: {
+    "period": {
+      "label": "Okres",
+      "year": "Ten rok ({year})",
+      "lastYear": "Poprzedni rok ({year})",
+      "d30": "Ostatnie 30 dni",
+      "d90": "Ostatnie 90 dni",
+      "all": "Wszystko",
+      "monthsOf": "Miesiące · {year}",
+      "showing": "Okres: {period}",
+      "none": "Brak danych w tym okresie. Wybierz inny okres powyżej."
+    },
     "collapse": "Zwiń pasek boczny",
     "expand": "Rozwiń pasek boczny",
     "nav": {

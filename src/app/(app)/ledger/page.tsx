@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { PeriodSelect } from "@/components/period-select";
+import { dateWhere, resolvePeriod } from "@/lib/period";
 import Link from "next/link";
 import type { JournalSource } from "@prisma/client";
 import { canEditIn, requireApp, tenant } from "@/lib/app-context";
@@ -22,7 +24,7 @@ const GROUPS = [
   { key: "costs", types: ["COST"], sign: 1, ytd: true },
 ] as const;
 
-type SP = { source?: string; jpage?: string; account?: string; apage?: string; new?: string; all?: string; addAccount?: string; close?: string };
+type SP = { period?: string; source?: string; jpage?: string; account?: string; apage?: string; new?: string; all?: string; addAccount?: string; close?: string };
 
 export default async function LedgerPage({ searchParams }: { searchParams: Promise<SP> }) {
   const ctx = await requireApp("reports");
@@ -33,6 +35,8 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
   const now = new Date();
   const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const fy = fiscalYearOf(today, ctx.administration.fiscalYearStart);
+  // Journal entries are filtered by period (default this financial year); the chart of accounts keeps its own dates.
+  const period = resolvePeriod(sp.period, ctx.administration.fiscalYearStart, now);
   const source = SOURCES.includes(sp.source as JournalSource) ? (sp.source as JournalSource) : null;
   const jpage = Math.max(1, Number(sp.jpage) || 1);
   const apage = Math.max(1, Number(sp.apage) || 1);
@@ -41,7 +45,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
   const showAll = sp.all === "1";
 
   const d = await tenant(ctx, async (tx) => {
-    const where = { administrationId: A, ...(source ? { source } : {}) };
+    const where = { administrationId: A, ...(source ? { source } : {}), date: dateWhere(period) };
     const [accounts, bsBal, ytdBal, entryCount, entries] = await Promise.all([
       tx.ledgerAccount.findMany({ where: { administrationId: A }, orderBy: { code: "asc" } }),
       balances(tx, A, { to: today }),
@@ -73,7 +77,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
   const eur0 = (c: number) => fmt.money(c, { decimals: 0 });
   const qs = (changes: Record<string, string | number | null>) => {
     const p = new URLSearchParams();
-    const base: Record<string, string | undefined> = { source: sp.source, jpage: sp.jpage, all: sp.all };
+    const base: Record<string, string | undefined> = { period: sp.period, source: sp.source, jpage: sp.jpage, all: sp.all };
     for (const [k, v] of Object.entries({ ...base, ...changes })) if (v !== null && v !== undefined && v !== "") p.set(k, String(v));
     const s = p.toString();
     return s ? `/ledger?${s}` : "/ledger";
@@ -167,6 +171,8 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
         <div className="card card-clip">
           <div style={{ padding: "8px 16px", minHeight: 50, fontWeight: 600, fontSize: 15, borderBottom: "1px solid #e4e7ec", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <span>{t("ledger.latest")}</span>
+            <span style={{ display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 400 }}>
+            <PeriodSelect value={period.key} fiscalYearStart={ctx.administration.fiscalYearStart} reset={["jpage"]} />
             <ParamSelect
               param="source"
               value={source ?? ""}
@@ -175,6 +181,7 @@ export default async function LedgerPage({ searchParams }: { searchParams: Promi
               width={190}
               options={[{ value: "", label: t("ledger.allSources") }, ...SOURCES.map((s) => ({ value: s, label: t(`ledger.source.${s}`) }))]}
             />
+            </span>
           </div>
           {d.entries.length ? (
             d.entries.map((e) => (

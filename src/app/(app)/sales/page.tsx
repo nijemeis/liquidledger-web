@@ -7,6 +7,8 @@ import { seesFinancials } from "@/lib/permissions";
 import { ratesOn } from "@/lib/domain/excise";
 import { daysOverdue, isCreditNote, peekInvoiceNumber } from "@/lib/domain/sales";
 import { stockLevels } from "@/lib/domain/stock";
+import { PeriodSelect } from "@/components/period-select";
+import { dateWhere, inPeriod, resolvePeriod } from "@/lib/period";
 import { InvoiceDetail, InvoiceEditor, SalesActions, type DetailData, type EditorData } from "./sales-client";
 
 export const metadata: Metadata = { title: "Sales invoices" };
@@ -15,7 +17,7 @@ type TabKey = "all" | "draft" | "open" | "overdue" | "paid";
 const TABS: TabKey[] = ["all", "draft", "open", "overdue", "paid"];
 const COLS = "130px minmax(0,1.6fr) 80px 80px 110px 120px 130px";
 
-export default async function SalesPage({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string; new?: string; customer?: string }> }) {
+export default async function SalesPage({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string; new?: string; customer?: string; period?: string }> }) {
   const ctx = await requireApp("sales");
   const { t, fmt, locale } = await getI18n(ctx.locale);
   const sp = await searchParams;
@@ -27,10 +29,28 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
   const today = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
   const lastMonthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
   const lastMonthEnd = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0));
+  const period = resolvePeriod(sp.period, ctx.administration.fiscalYearStart, now);
 
   const d = await tenant(ctx, async (tx) => {
     const [invoices, customers] = await Promise.all([
-      tx.salesInvoice.findMany({ where: { administrationId: A }, orderBy: [{ issueDate: "desc" }, { createdAt: "desc" }] }),
+      // The period's invoices, plus what the summary cards and an opened invoice need.
+      tx.salesInvoice.findMany({
+        where: {
+          administrationId: A,
+          ...(period.kind === "all"
+            ? {}
+            : {
+                OR: [
+                  { issueDate: dateWhere(period) },
+                  { status: { in: ["OPEN", "DRAFT"] } },
+                  { status: "PAID", paidAt: { gte: new Date(today.getTime() - 90 * 86400_000) } },
+                  { issueDate: { gte: lastMonthStart, lte: lastMonthEnd } },
+                  ...(sp.id ? [{ id: sp.id }] : []),
+                ],
+              }),
+        },
+        orderBy: [{ issueDate: "desc" }, { createdAt: "desc" }],
+      }),
       tx.relation.findMany({ where: { administrationId: A, kind: { in: ["CUSTOMER", "BOTH"] }, archivedAt: null }, orderBy: { name: "asc" } }),
     ]);
     const selected = sp.id ? invoices.find((i) => i.id === sp.id) ?? null : null;
@@ -149,8 +169,9 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
   }
   const isOverdue = (i: (typeof d.invoices)[number]) => i.status === "OPEN" && i.dueDate < today;
   const statusOf = (i: (typeof d.invoices)[number]): TabKey | "credited" => (i.status === "DRAFT" ? "draft" : i.status === "PAID" ? "paid" : i.status === "CREDITED" ? "credited" : isOverdue(i) ? "overdue" : "open");
-  const counts = Object.fromEntries(TABS.map((k) => [k, k === "all" ? d.invoices.length : d.invoices.filter((i) => statusOf(i) === k).length])) as Record<TabKey, number>;
-  const shown = tab === "all" ? d.invoices : d.invoices.filter((i) => statusOf(i) === tab);
+  const listed = d.invoices.filter((i) => inPeriod(period, i.issueDate));
+  const counts = Object.fromEntries(TABS.map((k) => [k, k === "all" ? listed.length : listed.filter((i) => statusOf(i) === k).length])) as Record<TabKey, number>;
+  const shown = tab === "all" ? listed : listed.filter((i) => statusOf(i) === tab);
 
   const open = d.invoices.filter((i) => i.status === "OPEN");
   const openSum = open.reduce((a, i) => a + i.totalCents - i.paidCents, 0);
@@ -173,6 +194,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
   const href = (extra: Record<string, string | undefined>) => {
     const q = new URLSearchParams();
     if (tab !== "all") q.set("tab", tab);
+    if (sp.period) q.set("period", period.key);
     for (const [k, v] of Object.entries(extra)) if (v) q.set(k, v);
     const s = q.toString();
     return `/sales${s ? `?${s}` : ""}`;
@@ -205,7 +227,23 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
       ) : null}
 
       <div className="card card-clip">
-        <TabLinks active={tab} tabs={TABS.map((k) => ({ key: k, label: t(`sales.tabs.${k}`), count: counts[k], href: k === "all" ? "/sales" : `/sales?tab=${k}` }))} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", borderBottom: "1px solid var(--line-200)", paddingRight: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }} className="tabs-flat">
+            <TabLinks
+              active={tab}
+              tabs={TABS.map((k) => {
+                const q = new URLSearchParams();
+                if (k !== "all") q.set("tab", k);
+                if (sp.period) q.set("period", period.key);
+                const s = q.toString();
+                return { key: k, label: t(`sales.tabs.${k}`), count: counts[k], href: `/sales${s ? `?${s}` : ""}` };
+              })}
+            />
+          </div>
+          <div style={{ padding: "6px 0 6px 12px" }}>
+            <PeriodSelect value={period.key} fiscalYearStart={ctx.administration.fiscalYearStart} />
+          </div>
+        </div>
         {shown.length ? (
           <div className="tbl">
             <div style={{ minWidth: 860 }}>
@@ -241,7 +279,7 @@ export default async function SalesPage({ searchParams }: { searchParams: Promis
             </div>
           </div>
         ) : (
-          <Empty icon={tab === "overdue" ? "Confetti" : "FileText"} color={tab === "overdue" ? "#157347" : "#8a93a3"} title={tab === "overdue" ? t("sales.empty.overdue") : t("sales.empty.title")}>
+          <Empty icon={tab === "overdue" ? "Confetti" : "FileText"} color={tab === "overdue" ? "#157347" : "#8a93a3"} title={tab === "overdue" ? t("sales.empty.overdue") : period.kind !== "all" && d.invoices.length ? t("common.period.none") : t("sales.empty.title")}>
             {tab === "all" && canEdit ? <div style={{ marginTop: 10 }}><Link className="btn btn-primary" href={href({ new: "1" })}>{t("sales.newInvoice")}</Link></div> : null}
           </Empty>
         )}

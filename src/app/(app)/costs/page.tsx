@@ -8,13 +8,15 @@ import { Stat, TabLinks } from "@/components/ui";
 import { CATEGORY_BY_KEY, categoryLabel } from "@/lib/domain/categories";
 import { accountName } from "@/lib/domain/chart";
 import { seesFinancials } from "@/lib/permissions";
+import { PeriodSelect } from "@/components/period-select";
+import { dateWhere, resolvePeriod } from "@/lib/period";
 import { CaptureStrip, CostsActions, ReceiptPanel, type ReceiptView } from "./client";
 
 export const metadata: Metadata = { title: "Costs & receipts" };
 
 const PAID_ICON: Record<string, IconName> = { CARD: "CreditCard", BANK: "Bank", OWN: "User" };
 
-export default async function CostsPage({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string; new?: string }> }) {
+export default async function CostsPage({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string; new?: string; period?: string }> }) {
   const ctx = await requireApp("purchases");
   const { t, fmt, locale } = await getI18n(ctx.locale);
   const sp = await searchParams;
@@ -25,19 +27,23 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  // The period filters booked receipts; the "to book" queue always shows everything.
+  const period = resolvePeriod(sp.period, ctx.administration.fiscalYearStart, now);
+  const bookedWhere = { administrationId: A, status: "BOOKED" as const, date: dateWhere(period) };
 
   const d = await tenant(ctx, async (tx) => {
     const [todo, booked, bookedCount, recent, claims, accounts] = await Promise.all([
       tx.receipt.findMany({ where: { administrationId: A, status: { not: "BOOKED" } }, orderBy: [{ date: "desc" }, { createdAt: "desc" }] }),
-      tx.receipt.findMany({ where: { administrationId: A, status: "BOOKED" }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 60 }),
-      tx.receipt.count({ where: { administrationId: A, status: "BOOKED" } }),
+      tx.receipt.findMany({ where: bookedWhere, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 500 }),
+      tx.receipt.count({ where: bookedWhere }),
       tx.receipt.findMany({ where: { administrationId: A, date: { gte: lastMonthStart } }, select: { date: true, amountCents: true, payroll: true, supplier: true } }),
       tx.receipt.findMany({ where: { administrationId: A, paidBy: "OWN", claimPaidAt: null }, select: { amountCents: true, employeeName: true } }),
       tx.ledgerAccount.findMany({ where: { administrationId: A }, select: { code: true, nameNl: true, nameEn: true } }),
     ]);
     const list = tab === "todo" ? todo : booked;
-    const selId = sp.id && list.some((r) => r.id === sp.id) ? sp.id : list[0]?.id;
-    const sel = selId ? list.find((r) => r.id === selId) ?? null : null;
+    // A linked receipt (e.g. from search) opens even when it's outside the period.
+    const selId = sp.id ?? list[0]?.id;
+    const sel = selId ? list.find((r) => r.id === selId) ?? (await tx.receipt.findFirst({ where: { id: selId, administrationId: A } })) : null;
     const doc = sel?.documentId ? await tx.document.findFirst({ where: { id: sel.documentId, administrationId: A }, select: { id: true, mimeType: true, filename: true } }) : null;
     return { todo, booked, bookedCount, recent, claims, accounts, list, sel, doc };
   });
@@ -83,7 +89,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
     : null;
 
   const shortId = A.slice(-8);
-  const tabHref = (k: string) => `/costs?tab=${k}`;
+  const keep = sp.period ? `&period=${period.key}` : "";
+  const tabHref = (k: string) => `/costs?tab=${k}${keep}`;
 
   return (
     <>
@@ -119,6 +126,11 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
               { key: "booked", label: t("costs.tabBooked"), count: d.bookedCount, href: tabHref("booked") },
             ]}
           />
+          {tab === "booked" ? (
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--line-100)" }}>
+              <PeriodSelect value={period.key} fiscalYearStart={ctx.administration.fiscalYearStart} />
+            </div>
+          ) : null}
           <div style={{ maxHeight: "calc(100vh - 140px)", minHeight: 120, overflow: "auto" }}>
             {d.list.map((r) => {
               const on = r.id === sel?.id;
@@ -127,7 +139,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
               return (
                 <Link
                   key={r.id}
-                  href={`/costs?tab=${tab}&id=${r.id}`}
+                  href={`/costs?tab=${tab}&id=${r.id}${keep}`}
                   scroll={false}
                   style={{ display: "grid", gridTemplateColumns: "52px minmax(0,1.2fr) minmax(0,1.2fr) 96px", minWidth: 480, gap: 12, alignItems: "center", padding: "11px 14px", borderBottom: "1px solid #eef0f3", borderLeft: `3px solid ${on ? "#7a1f3d" : "transparent"}`, background: on ? "#fcf5f7" : "#fff", color: "inherit", textDecoration: "none" }}
                 >

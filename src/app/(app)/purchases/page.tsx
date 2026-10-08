@@ -7,11 +7,13 @@ import { Empty, TabLinks } from "@/components/ui";
 import { excisePerUnit, ratesOn } from "@/lib/domain/excise";
 import { accountName } from "@/lib/domain/chart";
 import { seesFinancials } from "@/lib/permissions";
+import { PeriodSelect } from "@/components/period-select";
+import { dateWhere, resolvePeriod } from "@/lib/period";
 import { DropZone, MockPreview, ProposalForm, type ProposalData, type ProposalRefsView } from "./client";
 
 export const metadata: Metadata = { title: "Purchase invoices" };
 
-export default async function PurchasesPage({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string; upload?: string }> }) {
+export default async function PurchasesPage({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string; upload?: string; period?: string }> }) {
   const ctx = await requireApp("purchases");
   const { t, fmt } = await getI18n(ctx.locale);
   const sp = await searchParams;
@@ -20,16 +22,20 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
   const canEdit = canEditIn(ctx, "purchases");
   const money = seesFinancials(ctx.role);
   const lang = ctx.administration.ledgerLanguage;
+  // The period filters booked invoices; the "to approve" queue always shows everything.
+  const period = resolvePeriod(sp.period, ctx.administration.fiscalYearStart);
+  const bookedWhere = { administrationId: A, status: { in: ["BOOKED" as const, "PAID" as const] }, issueDate: dateWhere(period) };
 
   const d = await tenant(ctx, async (tx) => {
     const [todo, booked, countTodo, countBooked] = await Promise.all([
       tx.purchaseInvoice.findMany({ where: { administrationId: A, status: "TO_APPROVE" }, orderBy: [{ issueDate: "desc" }, { createdAt: "desc" }] }),
-      tx.purchaseInvoice.findMany({ where: { administrationId: A, status: { in: ["BOOKED", "PAID"] } }, orderBy: [{ bookedAt: "desc" }, { issueDate: "desc" }], take: 60 }),
+      tx.purchaseInvoice.findMany({ where: bookedWhere, orderBy: [{ issueDate: "desc" }, { bookedAt: "desc" }], take: 500 }),
       tx.purchaseInvoice.count({ where: { administrationId: A, status: "TO_APPROVE" } }),
-      tx.purchaseInvoice.count({ where: { administrationId: A, status: { in: ["BOOKED", "PAID"] } } }),
+      tx.purchaseInvoice.count({ where: bookedWhere }),
     ]);
     const list = tab === "todo" ? todo : booked;
-    const selId = sp.id && list.some((i) => i.id === sp.id) ? sp.id : list[0]?.id;
+    // A linked invoice (from search or a relation) opens even when it's outside the period.
+    const selId = sp.id ?? list[0]?.id;
     const sel = selId ? await tx.purchaseInvoice.findFirst({ where: { id: selId, administrationId: A }, include: { lines: { orderBy: { sort: "asc" } } } }) : null;
     const doc = sel?.documentId ? await tx.document.findFirst({ where: { id: sel.documentId, administrationId: A }, select: { id: true, filename: true, mimeType: true, status: true } }) : null;
     const [suppliers, products, warehouses, accounts, shipments, rates] = await Promise.all([
@@ -99,7 +105,7 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
     : null;
 
   const forward = `inbox+${A.slice(-8)}@in.liquidledger.net`;
-  const tabHref = (k: string) => `/purchases?tab=${k}`;
+  const tabHref = (k: string) => `/purchases?tab=${k}${sp.period ? `&period=${period.key}` : ""}`;
 
   return (
     <>
@@ -126,6 +132,11 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
               { key: "booked", label: t("purchases.tabBooked"), count: d.countBooked, href: tabHref("booked") },
             ]}
           />
+          {tab === "booked" ? (
+            <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--line-100)" }}>
+              <PeriodSelect value={period.key} fiscalYearStart={ctx.administration.fiscalYearStart} />
+            </div>
+          ) : null}
           <div style={{ maxHeight: "calc(100vh - 160px)", minHeight: 120, overflowY: "auto" }}>
           {d.list.map((i) => {
             const on = i.id === sel?.id;
@@ -133,7 +144,7 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
             return (
               <Link
                 key={i.id}
-                href={`/purchases?tab=${tab}&id=${i.id}`}
+                href={`/purchases?tab=${tab}&id=${i.id}${sp.period ? `&period=${period.key}` : ""}`}
                 scroll={false}
                 style={{ display: "flex", flexDirection: "column", gap: 3, padding: "12px 14px", borderBottom: "1px solid #eef0f3", borderLeft: `3px solid ${on ? "#7a1f3d" : "transparent"}`, background: on ? "#fcf5f7" : "#fff", color: "inherit", textDecoration: "none" }}
               >

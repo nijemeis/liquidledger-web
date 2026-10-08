@@ -247,3 +247,6 @@ button.tbl-row { width: 100%; border: 0; border-bottom: 1px solid var(--line-100
   .no-print { display: none !important; }
   body { background: #fff; }
 }
+
+/* Tabs that sit in a row with other controls (e.g. the period picker) draw no border of their own. */
+.tabs-flat .tabs { border-bottom: 0; }

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { PeriodSelect } from "@/components/period-select";
+import { inPeriod, resolvePeriod } from "@/lib/period";
 import Link from "next/link";
 import type { ShipmentDirection, ShipmentStage } from "@prisma/client";
 import { canEditIn, requireApp, tenant } from "@/lib/app-context";
@@ -16,7 +18,7 @@ const DIR_TONE: Record<ShipmentDirection, Tone> = { IMPORT: "blue", EXPORT: "win
 const STAGE_ORDER: Record<ShipmentStage, number> = { BOOKED: 0, IN_TRANSIT: 1, AT_CUSTOMS: 2, ARRIVED: 3 };
 const COLS = "90px 80px minmax(0,1.3fr) minmax(0,1.5fr) 80px 220px 130px";
 
-export default async function ShipmentsPage({ searchParams }: { searchParams: Promise<{ id?: string; new?: string }> }) {
+export default async function ShipmentsPage({ searchParams }: { searchParams: Promise<{ id?: string; new?: string; period?: string }> }) {
   const ctx = await requireApp("customs");
   const { t, fmt } = await getI18n(ctx.locale);
   const sp = await searchParams;
@@ -54,7 +56,9 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const etaLabel = (eta: Date | null) => (!eta ? "—" : eta.toISOString().slice(0, 10) === todayKey ? t("shipments.today") : fmt.date(eta));
 
-  const list = [...d.shipments].sort((a, b) => {
+  // Shipments still under way always show; arrived ones by arrival (or creation) date in the period.
+  const period = resolvePeriod(sp.period, ctx.administration.fiscalYearStart);
+  const list = d.shipments.filter((s) => s.stage !== "ARRIVED" || inPeriod(period, s.eta ?? s.createdAt)).sort((a, b) => {
     const sa = STAGE_ORDER[a.stage], sb = STAGE_ORDER[b.stage];
     if (sa !== sb) return sa - sb;
     if (a.stage === "ARRIVED") return (b.eta?.getTime() ?? 0) - (a.eta?.getTime() ?? 0);
@@ -109,12 +113,15 @@ export default async function ShipmentsPage({ searchParams }: { searchParams: Pr
         eyebrow={t("common.group.trade")}
         title={t("common.nav.shipments")}
         actions={
-          editable ? (
-            <Link href="/shipments?new=1" scroll={false} className="btn btn-primary">
-              <Icon name="Plus" size={16} />
-              {t("shipments.newOrder")}
-            </Link>
-          ) : null
+          <>
+            <PeriodSelect value={period.key} fiscalYearStart={ctx.administration.fiscalYearStart} />
+            {editable ? (
+              <Link href="/shipments?new=1" scroll={false} className="btn btn-primary">
+                <Icon name="Plus" size={16} />
+                {t("shipments.newOrder")}
+              </Link>
+            ) : null}
+          </>
         }
       />
 

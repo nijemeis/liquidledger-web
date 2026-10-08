@@ -3,6 +3,8 @@ import Link from "next/link";
 import { canEditIn, requireApp, tenant } from "@/lib/app-context";
 import { getI18n } from "@/i18n/server";
 import { Banner, Empty, PageHead, TabLinks } from "@/components/ui";
+import { PeriodSelect } from "@/components/period-select";
+import { dateWhere, resolvePeriod } from "@/lib/period";
 import { Icon } from "@/components/icon";
 import { accountBalances, suggestionsFor, type Suggestion } from "@/lib/domain/bank";
 import { accountName } from "@/lib/domain/chart";
@@ -11,9 +13,9 @@ import { BankActions, BankTodo, type TodoRow } from "./bank-client";
 
 export const metadata: Metadata = { title: "Bank" };
 
-const DONE_LIMIT = 60;
+const DONE_LIMIT = 500;
 
-export default async function BankPage({ searchParams }: { searchParams: Promise<{ account?: string; tab?: string }> }) {
+export default async function BankPage({ searchParams }: { searchParams: Promise<{ account?: string; tab?: string; period?: string }> }) {
   const ctx = await requireApp("bank");
   const { t, fmt } = await getI18n(ctx.locale);
   const sp = await searchParams;
@@ -22,6 +24,8 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
   const lang = ctx.administration.ledgerLanguage;
   const canEdit = canEditIn(ctx, "bank");
   const tab = sp.tab === "done" ? "done" : "todo";
+  // The period filters reconciled lines; the "to reconcile" queue always shows everything.
+  const period = resolvePeriod(sp.period, ctx.administration.fiscalYearStart);
 
   const d = await tenant(ctx, async (tx) => {
     const accounts = await accountBalances(tx, A);
@@ -29,8 +33,8 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
     if (!sel) return { accounts, sel: null } as const;
     const [todo, done, doneCount, ledger, ledgerBal] = await Promise.all([
       tx.bankTransaction.findMany({ where: { administrationId: A, bankAccountId: sel.id, status: "UNRECONCILED" }, orderBy: [{ date: "desc" }, { createdAt: "desc" }] }),
-      tx.bankTransaction.findMany({ where: { administrationId: A, bankAccountId: sel.id, status: "RECONCILED" }, orderBy: [{ date: "desc" }, { reconciledAt: "desc" }], take: DONE_LIMIT }),
-      tx.bankTransaction.count({ where: { administrationId: A, bankAccountId: sel.id, status: "RECONCILED" } }),
+      tx.bankTransaction.findMany({ where: { administrationId: A, bankAccountId: sel.id, status: "RECONCILED", date: dateWhere(period) }, orderBy: [{ date: "desc" }, { reconciledAt: "desc" }], take: DONE_LIMIT }),
+      tx.bankTransaction.count({ where: { administrationId: A, bankAccountId: sel.id, status: "RECONCILED", date: dateWhere(period) } }),
       tx.ledgerAccount.findMany({ where: { administrationId: A, active: true }, orderBy: { code: "asc" } }),
       balances(tx, A),
     ]);
@@ -116,7 +120,7 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
   };
 
   const sharedCode = (code: string) => d.accounts.filter((a) => a.accountCode === code).length > 1;
-  const tabHref = (k: string) => `/bank?account=${sel.id}${k === "done" ? "&tab=done" : ""}`;
+  const tabHref = (k: string) => `/bank?account=${sel.id}${k === "done" ? "&tab=done" : ""}${sp.period ? `&period=${period.key}` : ""}`;
   const amountColor = (c: number) => (c > 0 ? "#157347" : "#14171f");
   const amountText = (c: number, currency: string) => fmt.money(c, { sign: true, currency });
 
@@ -166,6 +170,11 @@ export default async function BankPage({ searchParams }: { searchParams: Promise
             { key: "done", label: t("bank.tabDone"), count: d.doneCount, href: tabHref("done") },
           ]}
         />
+        {tab === "done" ? (
+          <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--line-100)" }}>
+            <PeriodSelect value={period.key} fiscalYearStart={ctx.administration.fiscalYearStart} />
+          </div>
+        ) : null}
         {tab === "todo" ? (
           <>
             {!reconcilable && d.todo.length ? (
