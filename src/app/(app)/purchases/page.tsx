@@ -17,7 +17,8 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
   const ctx = await requireApp("purchases");
   const { t, fmt } = await getI18n(ctx.locale);
   const sp = await searchParams;
-  const tab = sp.tab === "booked" ? "booked" : "todo";
+  // Without an explicit tab, open on the queue — or on the booked list when the queue is empty.
+  const askedTab = sp.tab === "booked" ? "booked" : sp.tab === "todo" ? "todo" : null;
   const A = ctx.administration.id;
   const canEdit = canEditIn(ctx, "purchases");
   const money = seesFinancials(ctx.role);
@@ -33,6 +34,7 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
       tx.purchaseInvoice.count({ where: { administrationId: A, status: "TO_APPROVE" } }),
       tx.purchaseInvoice.count({ where: bookedWhere }),
     ]);
+    const tab: "todo" | "booked" = askedTab ?? (todo.length ? "todo" : "booked");
     const list = tab === "todo" ? todo : booked;
     // A linked invoice (from search or a relation) opens even when it's outside the period.
     const selId = sp.id ?? list[0]?.id;
@@ -47,8 +49,9 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
       ratesOn(tx, ctx.administration.country, new Date()),
     ]);
     const entry = sel?.journalEntryId ? await tx.journalEntry.findFirst({ where: { id: sel.journalEntryId, administrationId: A }, include: { lines: true } }) : null;
-    return { todo, booked, countTodo, countBooked, list, sel, doc, suppliers, products, warehouses, accounts, shipments, rates, entry };
+    return { tab, todo, booked, countTodo, countBooked, list, sel, doc, suppliers, products, warehouses, accounts, shipments, rates, entry };
   });
+  const tab = d.tab;
 
   const accName = new Map(d.accounts.map((a) => [a.code, accountName(a, lang)]));
   const refs: ProposalRefsView = {

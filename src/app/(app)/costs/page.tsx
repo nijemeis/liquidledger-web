@@ -20,7 +20,8 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
   const ctx = await requireApp("purchases");
   const { t, fmt, locale } = await getI18n(ctx.locale);
   const sp = await searchParams;
-  const tab = sp.tab === "booked" ? "booked" : "todo";
+  // Without an explicit tab, open on the queue — or on the booked list when the queue is empty.
+  const askedTab = sp.tab === "booked" ? "booked" : sp.tab === "todo" ? "todo" : null;
   const A = ctx.administration.id;
   const canEdit = canEditIn(ctx, "purchases");
   const lang = ctx.administration.ledgerLanguage;
@@ -40,13 +41,15 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
       tx.receipt.findMany({ where: { administrationId: A, paidBy: "OWN", claimPaidAt: null }, select: { amountCents: true, employeeName: true } }),
       tx.ledgerAccount.findMany({ where: { administrationId: A }, select: { code: true, nameNl: true, nameEn: true } }),
     ]);
+    const tab: "todo" | "booked" = askedTab ?? (todo.length ? "todo" : "booked");
     const list = tab === "todo" ? todo : booked;
     // A linked receipt (e.g. from search) opens even when it's outside the period.
     const selId = sp.id ?? list[0]?.id;
     const sel = selId ? list.find((r) => r.id === selId) ?? (await tx.receipt.findFirst({ where: { id: selId, administrationId: A } })) : null;
     const doc = sel?.documentId ? await tx.document.findFirst({ where: { id: sel.documentId, administrationId: A }, select: { id: true, mimeType: true, filename: true } }) : null;
-    return { todo, booked, bookedCount, recent, claims, accounts, list, sel, doc };
+    return { tab, todo, booked, bookedCount, recent, claims, accounts, list, sel, doc };
   });
+  const tab = d.tab;
   const members = await prisma.membership.findMany({ where: { administrationId: A }, include: { user: { select: { name: true, status: true } } } });
   const employees = [...new Set(members.filter((m) => m.user.status !== "DISABLED").map((m) => m.user.name.split(" ")[0]!))].sort();
 
