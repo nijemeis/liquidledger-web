@@ -75,6 +75,7 @@ const options = z.object({
   journals: z.array(z.string().max(35)).max(500),
   opening: z.boolean(),
   allRelations: z.boolean(),
+  invoices: z.boolean().default(true),
   lock: z.boolean(),
 });
 
@@ -118,7 +119,7 @@ export async function importXaf(form: FormData): Promise<ActionResult<{ result?:
       await auditApp(
         ctx,
         "ledger.import.xaf",
-        `Imported auditfile ${read.name} (${read.file.header.software || "unknown software"}, ${result.first} – ${result.last}): ${result.entries} entries, ${result.accountsCreated} new accounts, ${result.relationsCreated} new relations${locked ? `; closed the books through ${locked.toISOString().slice(0, 10)}` : ""}`,
+        `Imported auditfile ${read.name} (${read.file.header.software || "unknown software"}, ${result.first} – ${result.last}): ${result.entries} entries, ${result.accountsCreated} new accounts, ${result.relationsCreated} new relations, ${result.salesInvoices} sales and ${result.purchaseInvoices} purchase invoices${locked ? `; closed the books through ${locked.toISOString().slice(0, 10)}` : ""}`,
         { targetType: "import_batch", targetId: result.batchId, after: { ...result, journals: opts.journals, opening: opts.opening } },
         tx,
       );

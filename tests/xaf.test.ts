@@ -8,6 +8,7 @@ import { createClientWithAdministration } from "@/lib/domain/setup";
 import { balances } from "@/lib/domain/ledger";
 import { checkXaf, parseXaf, toCents, XafError } from "@/lib/xaf/parse";
 import { nextFree, suggestMapping, type AccountTarget } from "@/lib/xaf/mapping";
+import { impliedRateBp, invoiceFromTransaction, spreadVat } from "@/lib/xaf/invoices";
 import { previewImport, reverseImport, runImport, vatNumberOf, type ImportTarget } from "@/lib/xaf/import";
 import { loadXafData, renderXaf } from "@/lib/xaf/export";
 
@@ -51,12 +52,18 @@ const SAMPLE = `<?xml version="1.0"?>
       </obSubledger></obSubledgers>
     </openingBalance>
     <transactions>
-      <linesCount>9</linesCount><totalDebit>2231.00</totalDebit><totalCredit>2231.00</totalCredit>
+      <linesCount>11</linesCount><totalDebit>2352.00</totalDebit><totalCredit>2352.00</totalCredit>
       <journal><jrnID>51</jrnID><desc>Omzet boeking</desc><jrnTp>S</jrnTp>
         <transaction><nr>1</nr><desc>Omzet boeking</desc><periodNumber>1</periodNumber><trDt>2025-01-07</trDt><sourceID>INV</sourceID>
           <trLine><nr>1</nr><accID>1200</accID><docRef>771</docRef><effDate>2025-01-07</effDate><desc>Café Lima</desc><amnt>121.00</amnt><amntTp>D</amntTp><custSupID>10</custSupID><invRef>771</invRef></trLine>
           <trLine><nr>2</nr><accID>8000</accID><docRef>771</docRef><effDate>2025-01-07</effDate><desc>Pisco 700ml</desc><amnt>100.00</amnt><amntTp>C</amntTp><custSupID>10</custSupID><invRef>771</invRef></trLine>
           <trLine><nr>3</nr><accID>1700</accID><docRef>771</docRef><effDate>2025-01-07</effDate><desc>BTW</desc><amnt>21.00</amnt><amntTp>C</amntTp><custSupID>10</custSupID><invRef>771</invRef></trLine>
+        </transaction>
+      </journal>
+      <journal><jrnID>53</jrnID><desc>Verkoop factuur betaling</desc><jrnTp>B</jrnTp>
+        <transaction><nr>4</nr><desc>Betaling</desc><periodNumber>1</periodNumber><trDt>2025-01-20</trDt>
+          <trLine><nr>10</nr><accID>1001</accID><docRef>771</docRef><effDate>2025-01-20</effDate><amnt>121.00</amnt><amntTp>D</amntTp><custSupID>10</custSupID><invRef>771</invRef></trLine>
+          <trLine><nr>11</nr><accID>1200</accID><docRef>771</docRef><effDate>2025-01-20</effDate><amnt>121.00</amnt><amntTp>C</amntTp><custSupID>10</custSupID><invRef>771</invRef></trLine>
         </transaction>
       </journal>
       <journal><jrnID>71</jrnID><desc>Inkoopfactuur boeking</desc><jrnTp>P</jrnTp>
@@ -100,7 +107,7 @@ describe("XAF parser", () => {
     expect(f.opening!.lines.map((l) => l.amount)).toEqual([100000, 30000, -10000, -120000]);
     expect(f.opening!.openItems).toHaveLength(2);
     const c = checkXaf(f);
-    expect(c).toMatchObject({ transactions: 3, lines: 9, debit: 223100, credit: 223100, totalsMatch: true, openingBalanced: true, unbalanced: [], first: "2025-01-07", last: "2025-01-31" });
+    expect(c).toMatchObject({ transactions: 4, lines: 11, debit: 235200, credit: 235200, totalsMatch: true, openingBalanced: true, unbalanced: [], first: "2025-01-07", last: "2025-01-31" });
   });
 
   it("reads the older XAF 3.0 layout", () => {
@@ -170,6 +177,27 @@ describe("account mapping", () => {
   });
 });
 
+describe("invoice recognition", () => {
+  const T: Record<string, "REVENUE" | "COST" | "ASSET" | "LIABILITY"> = { "8000": "REVENUE", "4100": "COST", "1000": "ASSET", "1300": "ASSET", "1600": "LIABILITY" };
+  const types = (c: string) => T[c];
+  const L = (account: string, amount: number, relationId: string | null = "r1", ref = "9") => ({ account, amount, relationId, desc: "", ref });
+
+  it("recognises a sales invoice and leaves payments alone", () => {
+    expect(invoiceFromTransaction([L("1300", 12100), L("8000", -10000), L("1700", -2100)], types)).toMatchObject({ kind: "sales", number: "9", netCents: 10000, vatCents: 2100, totalCents: 12100 });
+    expect(invoiceFromTransaction([L("1000", 12100), L("1300", -12100)], types)).toBeNull();
+    expect(invoiceFromTransaction([L("4100", 1000), L("1810", 210), L("1600", -1210)], types)).toMatchObject({ kind: "purchase", totalCents: 1210 });
+    // Two customers in one transaction isn't an invoice.
+    expect(invoiceFromTransaction([L("1300", 100), L("1300", 100, "r2"), L("8000", -200)], types)).toBeNull();
+  });
+
+  it("derives VAT rates and spreads VAT over lines", () => {
+    expect(impliedRateBp(10000, 2100)).toBe(2100);
+    expect(impliedRateBp(3333, 300)).toBe(900);
+    expect(spreadVat([{ netCents: 100 }, { netCents: 200 }], 63)).toEqual([21, 42]);
+    expect(spreadVat([{ netCents: 1 }, { netCents: 1 }, { netCents: 1 }], 10)).toEqual([3, 3, 4]);
+  });
+});
+
 describe("XAF import and export", () => {
   let A = "";
   let target: ImportTarget;
@@ -211,11 +239,11 @@ describe("XAF import and export", () => {
     expect(preview.problems).toEqual([]);
     expect(preview.journals.find((j) => j.id === "191")!.include).toBe(false); // period result postings
     expect(preview.relations).toMatchObject({ total: 3, used: 2, matched: 0 });
-    expect(result).toMatchObject({ entries: 3, skipped: 0, relationsCreated: 2, accountsCreated: 2 }); // 4101 rent, 8001 revenue
+    expect(result).toMatchObject({ entries: 4, skipped: 0, relationsCreated: 2, accountsCreated: 2, salesInvoices: 1, purchaseInvoices: 1 }); // 4101 rent, 8001 revenue
 
     const bal = await withTenant(A, (tx) => balances(tx, A));
-    expect(bal.get("1000")).toBe(100000);
-    expect(bal.get("1300")).toBe(30000 + 12100); // opening open items + invoice 771
+    expect(bal.get("1000")).toBe(100000 + 12100);
+    expect(bal.get("1300")).toBe(30000); // opening open items; invoice 771 was paid
     expect(bal.get("1810")).toBe(21000);
     expect(bal.get("1700")).toBe(-2100);
     expect(bal.get("1500")).toBe(-10000);
@@ -232,6 +260,15 @@ describe("XAF import and export", () => {
     // Open items of the opening balance land on the customer.
     const ob = entries[0]!.lines.find((l) => l.accountCode === "1300")!;
     expect(ob).toMatchObject({ debitCents: 30000, relationId: lima.id, description: "Openstaande posten: 101, 102" });
+
+    // The sales and purchase invoices in the file appear as invoice records, linked to their entries.
+    const sale = await withTenant(A, (tx) => tx.salesInvoice.findFirstOrThrow({ where: { administrationId: A }, include: { lines: true } }));
+    expect(sale).toMatchObject({ number: "771", customerId: lima.id, status: "PAID", netCents: 10000, vatCents: 2100, totalCents: 12100, paidCents: 12100, taxRegime: "DOMESTIC", journalEntryId: entries[1]!.id });
+    expect(sale.paidAt!.toISOString().slice(0, 10)).toBe("2025-01-20");
+    expect(sale.lines).toEqual([expect.objectContaining({ description: "Pisco 700ml", netCents: 10000, vatRateBp: 2100, vatCode: "S_HIGH", vatCents: 2100 })]);
+    const buy = await withTenant(A, (tx) => tx.purchaseInvoice.findFirstOrThrow({ where: { administrationId: A }, include: { lines: true } }));
+    expect(buy).toMatchObject({ number: "H1", supplierName: "Bodega Ica", status: "BOOKED", netCents: 100000, vatCents: 21000, totalCents: 121000, paidCents: 0 });
+    expect(buy.lines).toEqual([expect.objectContaining({ accountCode: "4101", amountCents: 100000, vatCents: 21000 })]);
   });
 
   it("refuses the same file twice", async () => {
@@ -246,7 +283,7 @@ describe("XAF import and export", () => {
     const back = parseXaf(xml);
     expect(back.version).toBe("3.2");
     const c = checkXaf(back);
-    expect(c).toMatchObject({ transactions: 3, totalsMatch: true, unbalanced: [], unknownAccounts: [], unknownRelations: [] });
+    expect(c).toMatchObject({ transactions: 4, totalsMatch: true, unbalanced: [], unknownAccounts: [], unknownRelations: [] });
     expect(back.relations.map((r) => r.name).sort()).toEqual(["Bodega Ica", "Café Lima"]);
     if (process.env.XAF_XSD) {
       const dir = mkdtempSync(path.join(tmpdir(), "xaf-"));
@@ -258,7 +295,9 @@ describe("XAF import and export", () => {
   it("reverses an import with mirror entries", async () => {
     const batch = await withTenant(A, (tx) => tx.importBatch.findFirstOrThrow({ where: { administrationId: A } }));
     const r = await withTenant(A, (tx) => reverseImport(tx, A, batch.id, null));
-    expect(r.reversed).toBe(3);
+    expect(r.reversed).toBe(4);
+    expect(await withTenant(A, (tx) => tx.salesInvoice.count({ where: { administrationId: A } }))).toBe(0);
+    expect(await withTenant(A, (tx) => tx.purchaseInvoice.count({ where: { administrationId: A } }))).toBe(0);
     const bal = await withTenant(A, (tx) => balances(tx, A));
     expect([...bal.values()].every((v) => v === 0)).toBe(true);
     await expect(withTenant(A, (tx) => reverseImport(tx, A, batch.id, null))).rejects.toThrow(/already been reversed/);

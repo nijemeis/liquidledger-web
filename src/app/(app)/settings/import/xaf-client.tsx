@@ -32,6 +32,7 @@ export function XafImport({ canLock, lockedThrough }: { canLock: boolean; locked
   const [journals, setJournals] = useState<Set<string>>(new Set());
   const [opening, setOpening] = useState(true);
   const [allRelations, setAllRelations] = useState(false);
+  const [invoices, setInvoices] = useState(true);
   const [lock, setLock] = useState(false);
   const [mapping, setMapping] = useState<Record<string, AccountTarget>>({});
   const [done, setDone] = useState<ImportResult | null>(null);
@@ -61,6 +62,7 @@ export function XafImport({ canLock, lockedThrough }: { canLock: boolean; locked
       setJournals(new Set(p.journals.filter((j) => j.include).map((j) => j.id)));
       setOpening(!!p.opening && !p.problems.some((x) => x.code === "openingUnbalanced"));
       setAllRelations(false);
+      setInvoices(true);
       const thisMonth = new Date().toISOString().slice(0, 7);
       setLock(canLock && !!p.totals.last && p.totals.last.slice(0, 7) < thisMonth);
       setMapping(Object.fromEntries(p.mapping.map((m) => [m.accId, m.target])));
@@ -106,6 +108,7 @@ export function XafImport({ canLock, lockedThrough }: { canLock: boolean; locked
             <div style={{ fontWeight: 600 }}>{t("xaf.done.title", { n: fmt.int(done.entries) })}</div>
             <div style={{ fontSize: 13 }}>
               {t("xaf.done.text", { accounts: done.accountsCreated, relations: done.relationsCreated, matched: done.relationsMatched })}
+              {done.salesInvoices || done.purchaseInvoices ? ` ${t("xaf.done.invoices", { sales: done.salesInvoices, purchases: done.purchaseInvoices })}` : ""}
               {done.skipped ? ` ${t("xaf.done.skipped", { n: done.skipped })}` : ""}
             </div>
           </div>
@@ -279,6 +282,10 @@ export function XafImport({ canLock, lockedThrough }: { canLock: boolean; locked
               {p.relations.matched ? <span className="muted"> · {t("xaf.preview.matched", { n: fmt.int(p.relations.matched) })}</span> : null}
             </span>
           </label>
+          <label style={CHECK}>
+            <input type="checkbox" className="checkbox" style={{ marginTop: 3 }} checked={invoices} onChange={(e) => setInvoices(e.target.checked)} />
+            <span>{t("xaf.preview.invoices")}</span>
+          </label>
           {canLock ? (
             <label style={CHECK}>
               <input type="checkbox" className="checkbox" style={{ marginTop: 3 }} checked={lock} onChange={(e) => setLock(e.target.checked)} />
@@ -382,7 +389,7 @@ export function XafImport({ canLock, lockedThrough }: { canLock: boolean; locked
             fd.append("file", blob.data, blob.name);
             fd.append("name", blob.name);
             const used = Object.fromEntries(rows.map((r) => [r.accId, mapping[r.accId]!]));
-            fd.append("options", JSON.stringify({ mapping: used, journals: [...journals], opening: opening && !!p.opening, allRelations, lock }));
+            fd.append("options", JSON.stringify({ mapping: used, journals: [...journals], opening: opening && !!p.opening, allRelations, invoices, lock }));
             void runImport(fd).then(() => router.refresh());
           }}
         >

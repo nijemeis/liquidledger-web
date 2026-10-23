@@ -2,6 +2,9 @@ import type { AccountType, RelationKind } from "@prisma/client";
 import type { Tx } from "@/lib/domain/types";
 import { post, reverse, PostingError, type PostLine } from "@/lib/domain/ledger";
 import { checkXaf, type XafFile, type XafRelation } from "./parse";
+import { ACC } from "@/lib/domain/chart";
+import { isEU, VAT } from "@/lib/domain/vat";
+import { impliedRateBp, invoiceFromTransaction, spreadVat, type MappedLine } from "./invoices";
 import { ACCOUNT_CODE, defaultIncluded, suggestMapping, type AccountTarget, type ChartAccount, type MappingRow } from "./mapping";
 
 // Takes an auditfile over into an administration: missing ledger accounts and
@@ -26,6 +29,8 @@ export interface ImportOptions {
   opening: boolean;
   /** Also create relations without bookings in this file. */
   allRelations: boolean;
+  /** Describe recognised sales and purchase invoices as invoice records (default on). */
+  invoices?: boolean;
 }
 
 export type ImportProblem =
@@ -152,6 +157,8 @@ export interface ImportResult {
   accountsCreated: number;
   relationsCreated: number;
   relationsMatched: number;
+  salesInvoices: number;
+  purchaseInvoices: number;
   first: string;
   last: string;
 }
@@ -189,7 +196,7 @@ export async function runImport(
   const usedAccounts = new Set<string>();
   for (const l of opening?.lines ?? []) usedAccounts.add(l.account);
   for (const j of journals) for (const t of j.transactions) for (const l of t.lines) usedAccounts.add(l.account);
-  const chart = await tx.ledgerAccount.findMany({ where: { administrationId: A }, select: { code: true, active: true } });
+  const chart = await tx.ledgerAccount.findMany({ where: { administrationId: A }, select: { code: true, active: true, type: true } });
   const chartCodes = new Map(chart.map((c) => [c.code, c.active]));
   const toCreate = new Map<string, { name: string; type: AccountType }>();
   const accountOf = new Map<string, string>();
@@ -208,6 +215,8 @@ export async function runImport(
   for (const [code, a] of toCreate) {
     if (!accountTypes.has(a.type)) throw new PostingError(`Invalid account type for ${code}.`);
   }
+  const typeOfCode = new Map<string, AccountType>(chart.map((c) => [c.code, c.type]));
+  for (const [code, a] of toCreate) typeOfCode.set(code, a.type);
   if (toCreate.size)
     await tx.ledgerAccount.createMany({
       data: [...toCreate].map(([code, a]) => ({ administrationId: A, code, nameNl: a.name, nameEn: a.name, type: a.type })),
@@ -306,6 +315,32 @@ export async function runImport(
     }
   }
 
+  // ── Invoice records: what's still open per relation + invoice reference ──
+  const withInvoices = opts.invoices !== false;
+  const settle = new Map<string, { sum: number; moves: { tx: string; date: string }[] }>();
+  const refOf = (l: { invRef: string; docRef: string }) => (l.invRef && l.invRef !== "0" ? l.invRef : l.docRef && l.docRef !== "0" ? l.docRef : "");
+  const track = (account: string, relation: string, ref: string, amount: number, txKey: string, date: string) => {
+    const code = accountOf.get(account);
+    const rel = relationOf.get(relation);
+    if (!rel || !ref || (code !== ACC.receivables && code !== ACC.payables)) return;
+    const k = `${rel}|${ref}`;
+    const s = settle.get(k) ?? { sum: 0, moves: [] };
+    s.sum += amount;
+    s.moves.push({ tx: txKey, date });
+    settle.set(k, s);
+  };
+  const lineOf = new Map(opening?.lines.map((l) => [l.nr, l.account]) ?? []);
+  for (const o of opening?.openItems ?? []) track(lineOf.get(o.obLineNr) ?? "", o.relation, o.invRef, o.amount, "opening", opening!.date);
+  for (const j of journals) for (const t of j.transactions) for (const l of t.lines) track(l.account, l.relation, refOf(l), l.amount, `${j.id}:${t.nr}`, t.date);
+  const relInfo = new Map(
+    (await tx.relation.findMany({ where: { administrationId: A, id: { in: [...new Set(relationOf.values())] } }, select: { id: true, name: true, country: true, paymentTermsDays: true } })).map((r) => [r.id, r]),
+  );
+  const usedSalesNumbers = new Set((await tx.salesInvoice.findMany({ where: { administrationId: A, number: { not: null } }, select: { number: true } })).map((i) => i.number!));
+  let salesInvoices = 0;
+  let purchaseInvoices = 0;
+  const note = `${nl ? "Overgenomen uit" : "Imported from"} ${file.header.software || "XAF"}`;
+  const addDays = (d: string, n: number) => new Date(day(d).getTime() + n * 86_400_000);
+
   // ── Transactions ──────────────────────────────────────────────────────────
   for (const j of journals) {
     for (const t of j.transactions) {
@@ -318,13 +353,108 @@ export async function runImport(
       }
       const refs = new Set(t.lines.map((l) => l.invRef || l.docRef).filter((r) => r && r !== "0"));
       const title = [t.desc || j.desc, refs.size === 1 ? [...refs][0] : ""].filter(Boolean).join(" · ").slice(0, 200);
-      await post(tx, { ...base, date: day(t.date), title: title || `${j.desc} ${t.nr}`, lines });
+      const entry = await post(tx, { ...base, date: day(t.date), title: title || `${j.desc} ${t.nr}`, lines });
       entries++;
+      if (!withInvoices) continue;
+
+      const mapped: MappedLine[] = t.lines
+        .filter((l) => l.amount !== 0)
+        .map((l) => ({ account: accountOf.get(l.account)!, amount: l.amount, relationId: l.relation ? (relationOf.get(l.relation) ?? null) : null, desc: l.desc, ref: refOf(l) }));
+      const inv = invoiceFromTransaction(mapped, (c) => typeOfCode.get(c));
+      const rel = inv ? relInfo.get(inv.relationId) : undefined;
+      if (!inv || !rel) continue;
+      const s = settle.get(`${inv.relationId}|${inv.number}`);
+      const outstanding = s ? (inv.kind === "sales" ? s.sum : -s.sum) : inv.totalCents;
+      const settled = outstanding === 0;
+      const paidAt = settled ? (s?.moves.filter((m) => m.tx !== `${j.id}:${t.nr}`).map((m) => m.date).sort().pop() ?? t.date) : null;
+      const describe = (d: string) => (d || t.desc || rel.name).slice(0, 500);
+      const vatPer = spreadVat(inv.lines, inv.vatCents);
+      const rateBp = impliedRateBp(inv.netCents, inv.vatCents);
+
+      if (inv.kind === "sales") {
+        if (usedSalesNumbers.has(inv.number)) continue;
+        usedSalesNumbers.add(inv.number);
+        const regime = inv.vatCents !== 0 || rel.country === target.country ? "DOMESTIC" : isEU(rel.country) ? "EU_B2B" : "EXPORT";
+        const vatCode = inv.vatCents !== 0 ? (rateBp >= 2100 ? VAT.SALES_HIGH : VAT.SALES_LOW) : regime === "EXPORT" ? VAT.EXPORT : regime === "EU_B2B" ? VAT.ICP : VAT.SALES_ZERO;
+        await tx.salesInvoice.create({
+          data: {
+            administrationId: A,
+            number: inv.number,
+            customerId: inv.relationId,
+            issueDate: day(t.date),
+            dueDate: addDays(t.date, rel.paymentTermsDays),
+            taxRegime: regime,
+            status: inv.totalCents < 0 ? "CREDITED" : settled ? "PAID" : "OPEN",
+            currency: target.baseCurrency,
+            netCents: inv.netCents,
+            vatCents: inv.vatCents,
+            totalCents: inv.totalCents,
+            paidCents: Math.min(Math.max(inv.totalCents - outstanding, 0), Math.max(inv.totalCents, 0)),
+            notes: note,
+            sentAt: day(t.date),
+            paidAt: paidAt ? day(paidAt) : null,
+            journalEntryId: entry.id,
+            createdById: target.userId,
+            lines: {
+              create: inv.lines.map((l, i) => ({
+                administrationId: A,
+                description: describe(l.description),
+                qtyUnits: 1,
+                unitPriceCents: l.netCents,
+                netCents: l.netCents,
+                vatRateBp: rateBp,
+                vatCode,
+                vatCents: vatPer[i]!,
+                sort: i,
+              })),
+            },
+          },
+        });
+        salesInvoices++;
+      } else {
+        const treatment = inv.vatCents !== 0 ? "DOMESTIC" : rel.country === target.country ? "NONE" : isEU(rel.country) ? "EU_ACQUISITION" : "IMPORT";
+        await tx.purchaseInvoice.create({
+          data: {
+            administrationId: A,
+            supplierId: inv.relationId,
+            supplierName: rel.name,
+            supplierCountry: rel.country,
+            number: inv.number.slice(0, 100),
+            issueDate: day(t.date),
+            dueDate: addDays(t.date, rel.paymentTermsDays),
+            currency: target.baseCurrency,
+            totalSourceCents: inv.totalCents,
+            netCents: inv.netCents,
+            vatCents: inv.vatCents,
+            totalCents: inv.totalCents,
+            paidCents: settled ? inv.totalCents : Math.max(inv.totalCents - outstanding, 0),
+            vatTreatment: treatment,
+            status: settled ? "PAID" : "BOOKED",
+            bookedAt: day(t.date),
+            journalEntryId: entry.id,
+            lines: {
+              create: inv.lines.map((l, i) => ({
+                administrationId: A,
+                description: describe(l.description),
+                accountCode: l.account,
+                qty: 1,
+                unitPriceSrcCents: l.netCents,
+                amountSrcCents: l.netCents,
+                amountCents: l.netCents,
+                vatRateBp: rateBp,
+                vatCents: vatPer[i]!,
+                sort: i,
+              })),
+            },
+          },
+        });
+        purchaseInvoices++;
+      }
     }
   }
 
   await tx.importBatch.update({ where: { id: batch.id }, data: { entries, accountsCreated: toCreate.size, relationsCreated } });
-  return { batchId: batch.id, entries, skipped, accountsCreated: toCreate.size, relationsCreated, relationsMatched, first, last };
+  return { batchId: batch.id, entries, skipped, accountsCreated: toCreate.size, relationsCreated, relationsMatched, salesInvoices, purchaseInvoices, first, last };
 }
 
 /** Undo an import with reversing entries (history stays intact). */
@@ -337,6 +467,10 @@ export async function reverseImport(tx: Tx, administrationId: string, batchId: s
     orderBy: { number: "asc" },
     select: { id: true, date: true },
   });
+  // The invoice records only described imported bookings; they go with them.
+  const ids = entries.map((e) => e.id);
+  await tx.salesInvoice.deleteMany({ where: { administrationId, journalEntryId: { in: ids } } });
+  await tx.purchaseInvoice.deleteMany({ where: { administrationId, journalEntryId: { in: ids } } });
   for (const e of entries) await reverse(tx, e.id, e.date, userId);
   await tx.importBatch.update({ where: { id: batch.id }, data: { reversedAt: new Date() } });
   return { batch, reversed: entries.length };
