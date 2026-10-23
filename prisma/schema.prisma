@@ -493,10 +493,12 @@ model Relation {
   taxRegimeOverride TaxRegime?   @map("tax_regime_override")
   iban              String?
   notes             String?
+  externalRef       String?      @map("external_ref") // id in the package it was imported from ("xaf:<software>:<custSupID>")
   archivedAt        DateTime?    @map("archived_at")
   createdAt         DateTime     @default(now()) @map("created_at")
 
   @@index([administrationId, kind])
+  @@index([administrationId, externalRef])
   @@map("relations")
 }
 
@@ -938,6 +940,30 @@ enum JournalSource {
   EXCISE
   MANUAL
   PAYROLL_IMPORT
+  IMPORT // bookings taken over from another package (XAF auditfile)
+}
+
+/// One auditfile (XAF) taken over from another package. Its journal entries
+/// carry source IMPORT and sourceId = this batch, so the batch can be reversed.
+model ImportBatch {
+  id               String    @id @default(cuid())
+  administrationId String    @map("administration_id")
+  format           String    @default("XAF")
+  fileName         String    @map("file_name")
+  fileHash         String    @map("file_hash") // sha256 of the XML, refuses importing the same file twice
+  software         String
+  companyName      String    @map("company_name")
+  periodStart      DateTime? @map("period_start") @db.Date
+  periodEnd        DateTime? @map("period_end") @db.Date
+  entries          Int       @default(0)
+  accountsCreated  Int       @default(0) @map("accounts_created")
+  relationsCreated Int       @default(0) @map("relations_created")
+  createdById      String?   @map("created_by_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  reversedAt       DateTime? @map("reversed_at")
+
+  @@index([administrationId, fileHash])
+  @@map("import_batches")
 }
 
 model JournalEntry {

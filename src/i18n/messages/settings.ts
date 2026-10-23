@@ -13,6 +13,7 @@ export default ns({
       users: "Users & roles",
       administration: "Administration",
       rules: "Booking rules",
+      import: "Import & export",
     },
     role: {
       OWNER: "Owner",
@@ -385,6 +386,7 @@ export default ns({
       users: "Gebruikers & rollen",
       administration: "Administratie",
       rules: "Boekingsregels",
+      import: "Import & export",
     },
     role: {
       OWNER: "Eigenaar",
@@ -757,6 +759,7 @@ export default ns({
       users: "Utilisateurs & rôles",
       administration: "Dossier",
       rules: "Règles de comptabilisation",
+      import: "Import et export",
     },
     role: {
       OWNER: "Propriétaire",
@@ -1129,6 +1132,7 @@ export default ns({
       users: "Benutzer & Rollen",
       administration: "Mandant",
       rules: "Buchungsregeln",
+      import: "Import & Export",
     },
     role: {
       OWNER: "Inhaber",
@@ -1501,6 +1505,7 @@ export default ns({
       users: "Utenti & ruoli",
       administration: "Azienda",
       rules: "Regole di registrazione",
+      import: "Importa ed esporta",
     },
     role: {
       OWNER: "Titolare",
@@ -1873,6 +1878,7 @@ export default ns({
       users: "Usuarios & roles",
       administration: "Empresa",
       rules: "Reglas de contabilización",
+      import: "Importar y exportar",
     },
     role: {
       OWNER: "Propietario",
@@ -2245,6 +2251,7 @@ export default ns({
       users: "Użytkownicy & role",
       administration: "Firma",
       rules: "Reguły księgowania",
+      import: "Import i eksport",
     },
     role: {
       OWNER: "Właściciel",

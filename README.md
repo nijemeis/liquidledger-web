@@ -12,7 +12,7 @@ README, domain rules, interactive prototypes and screenshots). This repository i
 | Area | |
 |---|---|
 | **Sign-in** | Email + password, **mandatory two-factor authentication** (authenticator app, passkeys, SMS fallback, 10 recovery codes), "Sign in with a passkey", trusted devices (30 days), lockout after 5 failures, new-device emails with a "this wasn't me" lock link, password reset, invitations, free-trial sign-up |
-| **Customer app** | Dashboard · Bank (statement import CAMT.053/CSV, match suggestions, rules) · Sales invoices (tax engine for excise + VAT per regime, numbering, credit notes, print/PDF) · Purchase invoices (upload, AI reading, booking proposal) · Costs & receipts (plain-language categories → ledger accounts, rules, expense claims) · Relations (VIES checks) · Products · Stock & warehouses (bonded / duty-paid / in transit) · Excise & customs (return per period, EMCS/customs documents) · Orders & shipments · VAT return (NL boxes, ICP) · General ledger · Reports (P&L, balance sheet, accountant exports) · Settings (security, users & roles, administration, booking rules) |
+| **Customer app** | Dashboard · Bank (statement import CAMT.053/CSV, match suggestions, rules) · Sales invoices (tax engine for excise + VAT per regime, numbering, credit notes, print/PDF) · Purchase invoices (upload, AI reading, booking proposal) · Costs & receipts (plain-language categories → ledger accounts, rules, expense claims) · Relations (VIES checks) · Products · Stock & warehouses (bonded / duty-paid / in transit) · Excise & customs (return per period, EMCS/customs documents) · Orders & shipments · VAT return (NL boxes, ICP) · General ledger · Reports (P&L, balance sheet, accountant exports) · Settings (security, users & roles, administration, booking rules, **import & export of XAF auditfiles**) |
 | **Platform admin** | Separate console (own host in production) with **passkey-only staff sign-in**: clients, users, roles & permissions, plans & billing, audit log (CSV export), security policies, excise rates, time-boxed **support access** (reason required, client notified, audit-logged, read-only) |
 | **Languages** | NL, EN, FR, DE, IT, ES, PL; numbers and dates formatted per locale; ledger account names in the administration's chart language |
 
@@ -153,9 +153,32 @@ src/app/api          JSON endpoints (auth ceremonies, documents, exports, health
 src/lib/auth         sessions, login flow, TOTP, WebAuthn, rate limits
 src/lib/domain       accounting core: posting engine, tax engine (excise, VAT), sales, purchases,
                      receipts, bank matching, stock, returns, reports — framework-free and unit-tested
+src/lib/xaf          XAF auditfile (3.0–3.2) parser, account mapping, import and XAF 3.2 export
 src/i18n             translations (one file per area) and formatting
 docs/design-handoff  the design this is built from
 ```
+
+## Moving in from another package (XAF)
+
+Settings → **Import & export** reads an *XML Auditfile Financieel* (XAF 3.2, 3.1 or 3.0), the standard
+export of Dutch packages (Reeleezee, Exact, Twinfield, AFAS, Moneybird, e-Boekhouden, SnelStart…):
+
+1. Upload the `.xaf` — the browser gzips it first, so a full year fits easily. Nothing is booked yet.
+2. Review the preview: control totals, unbalanced transactions, closed periods, entries already in that
+   period, and which journals to take over (period-result journals are off by default; Liquid Ledger derives
+   the result itself).
+3. Map accounts. Codes are never matched blindly (Reeleezee's 1300 is input VAT, ours is receivables):
+   bank, receivables, payables, VAT, wage tax and equity are recognised by name; everything else becomes a
+   new account under its own code, or the next free one.
+4. Import. Relations are created (or matched by earlier import, VAT number or name), the opening balance is
+   booked with open items per customer/supplier, and every transaction goes through the posting engine with
+   source `IMPORT`. The batch can be reversed as a whole with mirror entries.
+
+Imported entries carry no VAT codes, so they don't feed Liquid Ledger VAT returns (those periods were filed
+from the old package), and open invoices arrive as balances per relation rather than as invoices.
+
+The same screen exports any fiscal year as **XAF 3.2** (validated against the official XSD) for the
+accountant, a Belastingdienst audit, or moving on.
 
 ## Not yet automated
 

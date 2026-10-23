@@ -18,8 +18,9 @@ import ledger from "./ledger";
 import reports from "./reports";
 import settings from "./settings";
 import admin from "./admin";
+import xaf from "./xaf";
 
-const namespaces = { common, auth, dashboard, bank, sales, purchases, costs, relations, products, stock, excise, shipments, vat, ledger, reports, settings, admin };
+const namespaces = { common, auth, dashboard, bank, sales, purchases, costs, relations, products, stock, excise, shipments, vat, ledger, reports, settings, admin, xaf };
 
 const cache = new Map<Locale, Dict>();
 

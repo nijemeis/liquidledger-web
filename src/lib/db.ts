@@ -24,12 +24,12 @@ const TX_OPTIONS = { maxWait: 10_000, timeout: 30_000 } as const;
  *
  * All access to bookkeeping tables must go through here.
  */
-export async function withTenant<T>(administrationId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+export async function withTenant<T>(administrationId: string, fn: (tx: Tx) => Promise<T>, opts: { timeout?: number } = {}): Promise<T> {
   if (!administrationId) throw new Error("withTenant: administrationId is required");
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.administration_id', ${administrationId}, true)`;
     return fn(tx);
-  }, TX_OPTIONS);
+  }, { ...TX_OPTIONS, ...(opts.timeout ? { timeout: opts.timeout } : {}) });
 }
 
 /**

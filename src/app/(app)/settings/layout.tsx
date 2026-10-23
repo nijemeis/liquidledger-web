@@ -18,6 +18,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
     ...(canView(ctx.role, "users") ? ([{ href: "/settings/users", label: t("settings.nav.users"), icon: "Users", group: t("settings.nav.company") }] as SettingsNavItem[]) : []),
     { href: "/settings/administration", label: t("settings.nav.administration"), icon: "Buildings", group: t("settings.nav.company") },
     ...(canView(ctx.role, "purchases") ? ([{ href: "/settings/rules", label: t("settings.nav.rules"), icon: "MagicWand", group: t("settings.nav.company") }] as SettingsNavItem[]) : []),
+    ...(canView(ctx.role, "reports") ? ([{ href: "/settings/import", label: t("settings.nav.import"), icon: "ArrowsLeftRight", group: t("settings.nav.company") }] as SettingsNavItem[]) : []),
   ];
   return (
     <>

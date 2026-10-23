@@ -14,7 +14,7 @@ import { AddAccountModal, NewEntryDrawer, PeriodCloseModal, ReverseButton, type 
 
 export const metadata: Metadata = { title: "General ledger" };
 
-const SOURCES: JournalSource[] = ["PURCHASE", "SALES", "BANK", "RECEIPT", "STOCK", "EXCISE", "MANUAL", "PAYROLL_IMPORT", "OPENING"];
+const SOURCES: JournalSource[] = ["PURCHASE", "SALES", "BANK", "RECEIPT", "STOCK", "EXCISE", "MANUAL", "PAYROLL_IMPORT", "OPENING", "IMPORT"];
 const PAGE = 8;
 const APAGE = 25;
 const GROUPS = [

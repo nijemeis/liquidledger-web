@@ -121,7 +121,7 @@ export type ActionResult<T = object> = ({ ok: true; message?: string } & T) | { 
 export async function appAction<T extends object>(
   perm: Permission | null,
   fn: (ctx: AppContext, tx: Tx) => Promise<ActionResult<T> | T & { message?: string }>,
-  opts: { revalidate?: string | string[] } = {},
+  opts: { revalidate?: string | string[]; /** ms; for long-running imports */ timeout?: number } = {},
 ): Promise<ActionResult<T>> {
   const ctx = await getAppContext();
   if (!ctx) return { ok: false, error: "Your session has ended. Sign in again." };
@@ -130,7 +130,7 @@ export async function appAction<T extends object>(
   }
   if (perm && !canEdit(ctx.role, perm)) return { ok: false, error: "Your role doesn't allow this change." };
   try {
-    const res = await withTenant(ctx.administration.id, (tx) => fn(ctx, tx));
+    const res = await withTenant(ctx.administration.id, (tx) => fn(ctx, tx), { timeout: opts.timeout });
     const paths = opts.revalidate ? (Array.isArray(opts.revalidate) ? opts.revalidate : [opts.revalidate]) : ["/", "layout"];
     if (paths[1] === "layout") revalidatePath(paths[0]!, "layout");
     else for (const p of paths) revalidatePath(p);
