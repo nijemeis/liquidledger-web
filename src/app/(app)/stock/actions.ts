@@ -4,8 +4,9 @@ import type { WarehouseKind } from "@prisma/client";
 import { appAction, auditApp } from "@/lib/app-context";
 import { getI18n } from "@/i18n/server";
 import { PostingError } from "@/lib/domain/ledger";
-import { countStock, stockLevels, takeSample, transferStock, unitsIn } from "@/lib/domain/stock";
+import { bookOpeningStock, countStock, stockLevels, takeSample, transferStock, unitsIn } from "@/lib/domain/stock";
 import { seesFinancials } from "@/lib/permissions";
+import { parseMoney } from "@/lib/format";
 import type { Tx } from "@/lib/db";
 
 const id = z.string().min(1).max(40);
@@ -199,4 +200,64 @@ export async function removeWarehouse(id: string) {
     await auditApp(ctx, "stock.warehouse.archive", `Archived warehouse ${w.name}`, { targetType: "warehouse", targetId: w.id }, tx);
     return { message: t("stock.toast.warehouseArchived", { name: w.name }) };
   });
+}
+
+const OpeningInput = z.object({
+  warehouseId: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  mode: z.enum(["equity", "account", "none"]),
+  account: z.string().trim().max(6).optional().default(""),
+  lines: z
+    .array(z.object({ productId: z.string().min(1), qty: z.coerce.number().int().min(1).max(10_000_000), unitCost: z.string().max(20) }))
+    .min(1)
+    .max(2000),
+});
+
+/** Opening stock for a warehouse (moving over from another system). */
+export async function addOpeningStock(input: z.input<typeof OpeningInput>) {
+  return appAction(
+    "stock",
+    async (ctx, tx) => {
+      const { t, fmt } = await getI18n(ctx.locale);
+      const p = OpeningInput.safeParse(input);
+      if (!p.success) throw new PostingError(t("stock.opening.err.input"));
+      const d = p.data;
+      const A = ctx.administration.id;
+      const lines = d.lines.map((l) => {
+        const cents = parseMoney(l.unitCost || "0");
+        if (cents === null || cents < 0) throw new PostingError(t("stock.opening.err.cost"));
+        return { productId: l.productId, qty: l.qty, unitCostCents: cents };
+      });
+      if (new Set(lines.map((l) => l.productId)).size !== lines.length) throw new PostingError(t("stock.opening.err.duplicate"));
+      if (d.mode === "account") {
+        const acc = await tx.ledgerAccount.findFirst({ where: { administrationId: A, code: d.account, active: true } });
+        if (!acc || ["3000", "3010", "3020"].includes(acc.code)) throw new PostingError(t("stock.opening.err.account"));
+      }
+      const res = await bookOpeningStock(tx, {
+        administrationId: A,
+        warehouseId: d.warehouseId,
+        date: new Date(`${d.date}T00:00:00Z`),
+        country: ctx.administration.country,
+        lines,
+        counter: d.mode === "account" ? { mode: "account", account: d.account } : { mode: d.mode },
+        createdById: ctx.userId,
+      });
+      await auditApp(
+        ctx,
+        "stock.opening",
+        `Opening stock in ${res.warehouse.name} on ${d.date}: ${res.units} units, value ${fmt.money(res.value)}${res.excise ? `, prepaid excise ${fmt.money(res.excise)}` : ""}, booked ${d.mode === "account" ? `against ${d.account}` : d.mode === "equity" ? "against equity" : "not (quantities only)"}`,
+        { targetType: "warehouse", targetId: res.warehouse.id, after: { date: d.date, lines: lines.length, units: res.units, valueCents: res.value, exciseCents: res.excise, mode: d.mode, account: d.account || null } },
+        tx,
+      );
+      const money = seesFinancials(ctx.role);
+      return {
+        message: t(money ? "stock.opening.toast" : "stock.opening.toastNoMoney", {
+          n: fmt.int(res.units),
+          wh: res.warehouse.name,
+          value: fmt.money(res.value + res.excise),
+        }),
+      };
+    },
+    { timeout: 120_000 },
+  );
 }

@@ -228,3 +228,85 @@ export async function receiveStock(
 }
 
 export const WAREHOUSE_EXCISE_ON_RELEASE: Record<WarehouseKind, boolean> = { BONDED: true, IN_TRANSIT: true, DUTY_PAID: false };
+
+export interface OpeningStockLine {
+  productId: string;
+  qty: number;
+  unitCostCents: number;
+}
+
+/**
+ * Opening stock when moving to Liquid Ledger: the units per product in one
+ * warehouse on a date, at a cost price. The value is booked on the warehouse's
+ * stock account against `counter`: equity (an opening balance), another ledger
+ * account (e.g. the stock account an auditfile import brought in), or not at
+ * all when the value is already in the books. In a duty-paid warehouse the
+ * excise already paid on the stock is held as prepaid excise, as on release.
+ */
+export async function bookOpeningStock(
+  tx: Tx,
+  input: {
+    administrationId: string;
+    warehouseId: string;
+    date: Date;
+    country: string;
+    lines: OpeningStockLine[];
+    counter: { mode: "equity" } | { mode: "account"; account: string } | { mode: "none" };
+    createdById?: string | null;
+  },
+) {
+  const A = input.administrationId;
+  if (!input.lines.length) throw new StockError("Add at least one product.");
+  const wh = await tx.warehouse.findFirst({ where: { id: input.warehouseId, administrationId: A, archivedAt: null } });
+  if (!wh) throw new StockError("Pick a warehouse.");
+  const products = await tx.product.findMany({ where: { administrationId: A, id: { in: input.lines.map((l) => l.productId) } } });
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const rates = wh.kind === "DUTY_PAID" ? await ratesOn(tx, input.country, input.date) : [];
+  const batch = `opening-${crypto.randomUUID()}`;
+  let value = 0;
+  let excise = 0;
+  let units = 0;
+  for (const l of input.lines) {
+    const product = byId.get(l.productId);
+    if (!product) throw new StockError("Unknown product.");
+    if (!Number.isInteger(l.qty) || l.qty <= 0) throw new StockError(`Enter a quantity of at least 1 for ${product.name}.`);
+    if (!Number.isInteger(l.unitCostCents) || l.unitCostCents < 0) throw new StockError(`Enter a cost price for ${product.name}.`);
+    const lineExcise = wh.kind === "DUTY_PAID" ? exciseForQty(product, rateFor(rates, product), l.qty) : 0;
+    await receiveStock(tx, {
+      administrationId: A,
+      productId: product.id,
+      warehouseId: wh.id,
+      qty: l.qty,
+      unitCostCents: l.unitCostCents,
+      reason: "OPENING",
+      at: input.date,
+      documentType: "opening_stock",
+      documentId: batch,
+      note: "Opening stock",
+      createdById: input.createdById,
+    });
+    if (lineExcise) await tx.stockMovement.updateMany({ where: { administrationId: A, documentId: batch, productId: product.id }, data: { exciseCents: lineExcise } });
+    value += l.qty * l.unitCostCents;
+    excise += lineExcise;
+    units += l.qty;
+  }
+  let entryId: string | null = null;
+  if (input.counter.mode !== "none" && value + excise > 0) {
+    const counter = input.counter.mode === "equity" ? ACC.equity : input.counter.account;
+    const entry = await post(tx, {
+      administrationId: A,
+      date: input.date,
+      title: `Opening stock · ${wh.name}`,
+      source: "OPENING",
+      sourceId: batch,
+      createdById: input.createdById,
+      lines: [
+        { account: STOCK_ACCOUNT[wh.kind], debit: value },
+        ...(excise ? [{ account: ACC.prepaidExcise, debit: excise }] : []),
+        { account: counter, credit: value + excise },
+      ],
+    });
+    entryId = entry.id;
+  }
+  return { units, value, excise, warehouse: wh, entryId };
+}

@@ -5,12 +5,13 @@ import type { WarehouseKind } from "@prisma/client";
 import { Modal, useAction } from "@/components/client";
 import { Icon } from "@/components/icon";
 import { useI18n } from "@/i18n/client";
-import { addWarehouse, countStockAction, moveStock, removeWarehouse, sampleStock, updateWarehouse } from "./actions";
+import { addOpeningStock, addWarehouse, countStockAction, moveStock, removeWarehouse, sampleStock, updateWarehouse } from "./actions";
 
 export interface StockProduct {
   id: string;
   name: string;
   sku: string;
+  ean?: string | null;
   costCents: number; // 0 when the viewer doesn't see money
   excisePerUnit: number; // fractional cents
 }
@@ -22,8 +23,13 @@ export interface StockWarehouse {
   exciseWarehouseNo?: string | null;
 }
 
-type Props = { products: StockProduct[]; warehouses: StockWarehouse[]; levels: Record<string, Record<string, number>>; selectedId: string | null; money: boolean };
-type Open = null | "move" | "sample" | "count" | "warehouse" | "edit";
+export interface OpeningOptions {
+  accounts: { code: string; name: string; balanceCents: number }[];
+  /** Account holding imported stock value, if one was found. */
+  suggested: string | null;
+}
+type Props = { products: StockProduct[]; warehouses: StockWarehouse[]; levels: Record<string, Record<string, number>>; selectedId: string | null; money: boolean; opening?: OpeningOptions };
+type Open = null | "move" | "sample" | "count" | "warehouse" | "edit" | "opening";
 
 export function StockActions(props: Props) {
   const { t } = useI18n();
@@ -40,6 +46,12 @@ export function StockActions(props: Props) {
         <button className="btn" onClick={() => setOpen("edit")}>
           <Icon name="PencilSimple" size={16} />
           {t("stock.actions.editWarehouse")}
+        </button>
+      ) : null}
+      {props.money && props.opening ? (
+        <button className="btn" onClick={() => setOpen("opening")} disabled={!props.warehouses.length || !props.products.length}>
+          <Icon name="Package" size={16} />
+          {t("stock.actions.opening")}
         </button>
       ) : null}
       <button className="btn" onClick={() => setOpen("count")} disabled={!props.warehouses.length}>
@@ -59,6 +71,7 @@ export function StockActions(props: Props) {
       {open === "count" ? <CountModal {...props} onClose={close} /> : null}
       {open === "warehouse" ? <WarehouseModal onClose={close} /> : null}
       {open === "edit" && current ? <WarehouseModal onClose={close} edit={current} /> : null}
+      {open === "opening" && props.opening ? <OpeningStockModal {...props} opening={props.opening} onClose={close} /> : null}
     </>
   );
 }
@@ -412,6 +425,198 @@ function WarehouseModal({ onClose, edit }: { onClose: () => void; edit?: StockWa
         </div>
         {edit ? <div className="field-label">{t("stock.edit.hint")}</div> : null}
       </form>
+    </Modal>
+  );
+}
+
+// ── Opening stock ───────────────────────────────────────────────────────────
+
+type OpeningRow = { key: number; productId: string; qty: string; cost: string };
+const centsToInput = (c: number) => (c / 100).toFixed(2).replace(".", ",");
+
+/** "SKU/EAN/name ⇥ qty ⇥ cost" lines pasted from a spreadsheet → rows (and the lines that matched nothing). */
+function parsePasted(text: string, products: StockProduct[]) {
+  const norm = (x: string) => x.trim().toLowerCase();
+  const rows: Omit<OpeningRow, "key">[] = [];
+  const unmatched: string[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const cells = line.split(/\t|;/).map((c) => c.trim());
+    const [id = "", qty = "", cost = ""] = cells.length >= 2 ? cells : line.split(",").map((c) => c.trim());
+    const p = products.find((x) => norm(x.sku) === norm(id)) ?? products.find((x) => x.ean && norm(x.ean) === norm(id)) ?? products.find((x) => norm(x.name) === norm(id));
+    const n = qty.replace(/[.\s]/g, "");
+    if (!p || !/^\d+$/.test(n)) {
+      if (!/^(sku|artikel|product|ean|code)/i.test(id)) unmatched.push(line.trim());
+      continue;
+    }
+    rows.push({ productId: p.id, qty: n, cost: cost || centsToInput(p.costCents) });
+  }
+  return { rows, unmatched };
+}
+
+function OpeningStockModal({ products, warehouses, selectedId, opening, onClose }: Props & { opening: OpeningOptions; onClose: () => void }) {
+  const { t, fmt } = useI18n();
+  const today = new Date().toISOString().slice(0, 10);
+  const [warehouseId, setWarehouseId] = useState(selectedId ?? warehouses[0]?.id ?? "");
+  const [date, setDate] = useState(today);
+  const [mode, setMode] = useState<"equity" | "account" | "none">(opening.suggested ? "account" : "equity");
+  const [account, setAccount] = useState(opening.suggested ?? opening.accounts[0]?.code ?? "");
+  const [rows, setRows] = useState<OpeningRow[]>([{ key: 0, productId: "", qty: "", cost: "" }]);
+  const [paste, setPaste] = useState<string | null>(null);
+  const [unmatched, setUnmatched] = useState<string[]>([]);
+  const [run, pending] = useAction(addOpeningStock, { onDone: (r) => r.ok && onClose() });
+  const wh = warehouses.find((w) => w.id === warehouseId);
+  const byId = new Map(products.map((p) => [p.id, p]));
+  const set = (key: number, patch: Partial<OpeningRow>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  const filled = rows.filter((r) => r.productId && Number(r.qty) > 0);
+  const cents = (s: string) => Math.round(Number(s.replace(/\./g, "").replace(",", ".")) * 100) || 0;
+  const value = filled.reduce((a, r) => a + Number(r.qty) * cents(r.cost), 0);
+  const excise = wh?.kind === "DUTY_PAID" ? filled.reduce((a, r) => a + Math.round(Number(r.qty) * (byId.get(r.productId)?.excisePerUnit ?? 0)), 0) : 0;
+  const dup = new Set(filled.map((r) => r.productId)).size !== filled.length;
+  let nextKey = rows.reduce((a, r) => Math.max(a, r.key), 0) + 1;
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      width={760}
+      title={t("stock.opening.title")}
+      footer={
+        <>
+          <button className="btn" type="button" onClick={onClose}>
+            {t("common.cancel")}
+          </button>
+          <button
+            className="btn btn-primary"
+            disabled={pending || !filled.length || dup || !warehouseId || (mode === "account" && !account)}
+            onClick={() => run({ warehouseId, date, mode, account: mode === "account" ? account : "", lines: filled.map((r) => ({ productId: r.productId, qty: Number(r.qty), unitCost: r.cost || "0" })) })}
+          >
+            {pending ? <Icon name="CircleNotch" size={16} className="spin" /> : <Icon name="Package" size={16} />}
+            {t("stock.opening.submit", { n: fmt.int(filled.reduce((a, r) => a + Number(r.qty), 0)) })}
+          </button>
+        </>
+      }
+    >
+      <p className="muted" style={{ margin: 0, fontSize: 13.5 }}>{t("stock.opening.text")}</p>
+      <div className="form-grid">
+        <label className="field">
+          {t("stock.f.warehouse")}
+          <select className="select" value={warehouseId} onChange={(e) => setWarehouseId(e.target.value)}>
+            {warehouses.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name} · {t(`stock.kind.${w.kind}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          {t("stock.opening.date")}
+          <input className="input n" type="date" value={date} max={today} onChange={(e) => setDate(e.target.value)} />
+        </label>
+      </div>
+
+      <div>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div className="section-label" style={{ margin: 0 }}>{t("stock.opening.products")}</div>
+          <button type="button" className="btn btn-ghost" onClick={() => setPaste(paste === null ? "" : null)}>
+            <Icon name="Copy" size={15} />
+            {t("stock.opening.paste")}
+          </button>
+        </div>
+        {paste !== null ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+            <textarea className="textarea n" rows={5} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"WN-1021\t120\t6,35\nSP-3012\t48\t14,20"} />
+            <div className="row" style={{ gap: 8, alignItems: "center" }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  const r = parsePasted(paste, products);
+                  const keep = rows.filter((x) => x.productId);
+                  setRows([...keep, ...r.rows.map((x) => ({ ...x, key: nextKey++ }))]);
+                  setUnmatched(r.unmatched);
+                  setPaste(null);
+                }}
+              >
+                {t("stock.opening.pasteApply")}
+              </button>
+              <span className="field-label">{t("stock.opening.pasteHint")}</span>
+            </div>
+          </div>
+        ) : null}
+        {unmatched.length ? (
+          <div className="banner banner-warn" style={{ marginBottom: 8, fontSize: 13 }}>
+            <Icon name="Warning" size={16} />
+            <div>
+              {t("stock.opening.unmatched", { n: unmatched.length })}
+              <div className="n" style={{ fontSize: 12, marginTop: 4 }}>{unmatched.slice(0, 5).join(" · ")}{unmatched.length > 5 ? " …" : ""}</div>
+            </div>
+          </div>
+        ) : null}
+        <div style={{ display: "grid", gap: 6 }}>
+          {rows.map((r) => {
+            const p = byId.get(r.productId);
+            return (
+              <div key={r.key} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 90px 110px 34px", gap: 6, alignItems: "center" }}>
+                <select
+                  className="select"
+                  aria-label={t("stock.f.product")}
+                  value={r.productId}
+                  onChange={(e) => {
+                    const np = byId.get(e.target.value);
+                    set(r.key, { productId: e.target.value, cost: r.cost || (np ? centsToInput(np.costCents) : "") });
+                  }}
+                >
+                  <option value="">{t("stock.f.pick")}</option>
+                  {products.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.sku} · {x.name}
+                    </option>
+                  ))}
+                </select>
+                <input className="input n" inputMode="numeric" aria-label={t("stock.opening.qty")} placeholder={t("stock.opening.qty")} value={r.qty} onChange={(e) => set(r.key, { qty: e.target.value.replace(/\D/g, "") })} />
+                <input className="input n" inputMode="decimal" aria-label={t("stock.opening.cost")} placeholder={p ? centsToInput(p.costCents) : t("stock.opening.cost")} value={r.cost} onChange={(e) => set(r.key, { cost: e.target.value })} />
+                <button type="button" className="btn btn-ghost" aria-label={t("stock.opening.removeLine")} disabled={rows.length === 1} onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))} style={{ padding: "0 8px" }}>
+                  <Icon name="Trash" size={16} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <div className="row" style={{ justifyContent: "space-between", marginTop: 6, alignItems: "center" }}>
+          <button type="button" className="btn btn-ghost" onClick={() => setRows((rs) => [...rs, { key: nextKey++, productId: "", qty: "", cost: "" }])}>
+            <Icon name="Plus" size={15} />
+            {t("stock.opening.addLine")}
+          </button>
+          <span className="n" style={{ fontSize: 13 }}>
+            {t("stock.opening.total", { value: fmt.money(value) })}
+            {excise ? ` · ${t("stock.opening.excise", { amount: fmt.money(excise) })}` : ""}
+          </span>
+        </div>
+        {dup ? <div style={{ color: "#b42318", fontSize: 12.5 }}>{t("stock.opening.err.duplicate")}</div> : null}
+      </div>
+
+      <label className="field">
+        {t("stock.opening.counter")}
+        <select className="select" value={mode} onChange={(e) => setMode(e.target.value as typeof mode)}>
+          <option value="equity">{t("stock.opening.modeEquity")}</option>
+          <option value="account" disabled={!opening.accounts.length}>{t("stock.opening.modeAccount")}</option>
+          <option value="none">{t("stock.opening.modeNone")}</option>
+        </select>
+        <span className="field-label">{t(`stock.opening.help.${mode}`)}</span>
+      </label>
+      {mode === "account" ? (
+        <label className="field">
+          {t("stock.opening.account")}
+          <select className="select" value={account} onChange={(e) => setAccount(e.target.value)}>
+            {opening.accounts.map((a) => (
+              <option key={a.code} value={a.code}>
+                {a.code} · {a.name} ({fmt.money(a.balanceCents)})
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
     </Modal>
   );
 }

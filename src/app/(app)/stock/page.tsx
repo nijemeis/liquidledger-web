@@ -6,6 +6,8 @@ import { getI18n } from "@/i18n/server";
 import { Empty, PageHead, TONE, type Tone } from "@/components/ui";
 import { excisePerUnit, ratesOn, rateFor } from "@/lib/domain/excise";
 import { stockLevels, unitsIn } from "@/lib/domain/stock";
+import { balances } from "@/lib/domain/ledger";
+import { accountName } from "@/lib/domain/chart";
 import { seesFinancials } from "@/lib/permissions";
 import { StockActions, type StockProduct, type StockWarehouse } from "./stock-actions";
 
@@ -42,8 +44,14 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           take: 50,
         })
       : [];
-    return { warehouses, products, levels, rates, selected, movements };
+    // Accounts the value of opening stock can come from (e.g. a stock account brought in by an auditfile import).
+    const assets = money ? await tx.ledgerAccount.findMany({ where: { administrationId: A, active: true, type: "ASSET", code: { notIn: ["3000", "3010", "3020"] } }, orderBy: { code: "asc" } }) : [];
+    const bal = money ? await balances(tx, A) : new Map<string, number>();
+    return { warehouses, products, levels, rates, selected, movements, assets, bal };
   });
+  const lang = ctx.administration.ledgerLanguage;
+  const openingAccounts = d.assets.map((a) => ({ code: a.code, name: accountName(a, lang), balanceCents: d.bal.get(a.code) ?? 0 }));
+  const suggestedAccount = openingAccounts.find((a) => a.balanceCents > 0 && /voorraad|stock|inventory|handelsgoederen/i.test(a.name))?.code ?? null;
 
   const perUnit = new Map(d.products.map((p) => [p.id, excisePerUnit(p, rateFor(d.rates, p))]));
   const whName = new Map(d.warehouses.map((w) => [w.id, w.name]));
@@ -89,7 +97,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   for (const [pid, m] of d.levels) levelsObj[pid] = Object.fromEntries(m);
   const actionProducts: StockProduct[] = d.products
     .filter((p) => !p.archivedAt || unitsIn(d.levels, p.id) > 0)
-    .map((p) => ({ id: p.id, name: p.name, sku: p.sku, costCents: money ? p.costCents : 0, excisePerUnit: money ? (perUnit.get(p.id) ?? 0) : 0 }));
+    .map((p) => ({ id: p.id, name: p.name, sku: p.sku, ean: p.ean, costCents: money ? p.costCents : 0, excisePerUnit: money ? (perUnit.get(p.id) ?? 0) : 0 }));
   const actionWarehouses: StockWarehouse[] = d.warehouses.map((w) => ({ id: w.id, name: w.name, kind: w.kind, city: w.city, exciseWarehouseNo: w.exciseWarehouseNo }));
 
   const reasonLabel = (m: (typeof d.movements)[number]) => {
@@ -112,7 +120,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
         title={t("common.nav.stock")}
         actions={
           canEdit ? (
-            <StockActions products={actionProducts} warehouses={actionWarehouses} levels={levelsObj} selectedId={sel?.id ?? null} money={money} />
+            <StockActions products={actionProducts} warehouses={actionWarehouses} levels={levelsObj} selectedId={sel?.id ?? null} money={money} opening={{ accounts: openingAccounts, suggested: suggestedAccount }} />
           ) : null
         }
       />
