@@ -16,7 +16,7 @@ import {
   type ReconcileChoice,
 } from "@/lib/domain/bank";
 import { accountName } from "@/lib/domain/chart";
-import { PostingError } from "@/lib/domain/ledger";
+import { PostingError, reverse } from "@/lib/domain/ledger";
 import { parseMoney } from "@/lib/format";
 import { bankAccountName, parseStatement, StatementError } from "@/lib/domain/statements";
 
@@ -367,7 +367,11 @@ export async function updateBankAccount(input: z.input<typeof editSchema>) {
   );
 }
 
-/** Delete a bank account that was never used; archive one with history (only when nothing is left to reconcile). */
+/**
+ * Remove a bank account. Nothing reconciled yet: delete it with its imported
+ * lines and reverse its opening-balance entry (a clean undo of an import).
+ * With reconciled history: archive it — only once nothing is left to reconcile.
+ */
 export async function removeBankAccount(id: string) {
   return appAction(
     "bank",
@@ -376,17 +380,22 @@ export async function removeBankAccount(id: string) {
       const A = ctx.administration.id;
       const acct = await tx.bankAccount.findFirst({ where: { id, administrationId: A, archivedAt: null } });
       if (!acct) throw new PostingError(t("bank.import.pickAccount"));
-      const [lines, open, opening] = await Promise.all([
-        tx.bankTransaction.count({ where: { administrationId: A, bankAccountId: acct.id } }),
+      const [reconciled, open] = await Promise.all([
+        tx.bankTransaction.count({ where: { administrationId: A, bankAccountId: acct.id, status: "RECONCILED" } }),
         tx.bankTransaction.count({ where: { administrationId: A, bankAccountId: acct.id, status: "UNRECONCILED" } }),
-        tx.journalEntry.count({ where: { administrationId: A, source: "OPENING", sourceId: acct.id } }),
       ]);
-      if (open) throw new PostingError(t("bank.remove.open", { n: open }));
-      if (!lines && !opening) {
+      if (!reconciled) {
+        const openings = await tx.journalEntry.findMany({ where: { administrationId: A, source: "OPENING", sourceId: acct.id, reversalOfId: null }, select: { id: true, date: true } });
+        for (const e of openings) {
+          const undone = await tx.journalEntry.count({ where: { administrationId: A, reversalOfId: e.id } });
+          if (!undone) await reverse(tx, e.id, e.date, ctx.userId);
+        }
+        await tx.bankTransaction.deleteMany({ where: { administrationId: A, bankAccountId: acct.id } });
         await tx.bankAccount.delete({ where: { id: acct.id } });
-        await auditApp(ctx, "bank.account_delete", `Deleted unused bank account ${acct.name}`, { targetType: "bank_account", targetId: acct.id, before: { name: acct.name, iban: acct.iban } }, tx);
+        await auditApp(ctx, "bank.account_delete", `Deleted bank account ${acct.name} with ${open} unreconciled lines${openings.length ? " and reversed its opening balance" : ""}`, { targetType: "bank_account", targetId: acct.id, before: { name: acct.name, iban: acct.iban, accountCode: acct.accountCode } }, tx);
         return { message: t("bank.toast.accountDeleted", { name: acct.name }) };
       }
+      if (open) throw new PostingError(t("bank.remove.open", { n: open }));
       await tx.bankAccount.update({ where: { id: acct.id }, data: { archivedAt: new Date() } });
       await auditApp(ctx, "bank.account_archive", `Archived bank account ${acct.name}`, { targetType: "bank_account", targetId: acct.id }, tx);
       return { message: t("bank.toast.accountArchived", { name: acct.name }) };
