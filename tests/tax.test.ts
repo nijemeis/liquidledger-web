@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { excisePerUnit, exciseForQty, exciseFormula, returnBasis, type RateRow } from "@/lib/domain/excise";
+import { bandLabel, bandsOverlap, excisePerUnit, exciseForQty, exciseFormula, inBand, inForce, rateFor, returnBasis, type RateRow } from "@/lib/domain/excise";
 import { calcInvoice } from "@/lib/domain/sales";
 import { computeBoxes, determineRegime, NL_VAT_RETURN, VAT } from "@/lib/domain/vat";
 import { calcPurchase, suggestTreatment } from "@/lib/domain/purchases";
@@ -21,6 +21,7 @@ const RATES = new Map<string, RateRow>([
 const rioja = { id: "rioja", name: "Rioja", sku: "WN-1021", category: "WINE", volumeMl: 750, abvBp: 1350, platoTenths: null, depositCents: 0 } as const;
 const glen = { id: "glen", name: "Glen Arrow 12", sku: "SP-3012", category: "SPIRITS", volumeMl: 700, abvBp: 4000, platoTenths: null, depositCents: 0 } as const;
 const tripel = { id: "tripel", name: "Tripel", sku: "BR-2003", category: "BEER", volumeMl: 330, abvBp: 850, platoTenths: 185, depositCents: 10 } as const;
+const RATE_LIST = [...RATES.values()];
 const water = { id: "water", name: "Water", sku: "NA-5001", category: "WATER", volumeMl: 500, abvBp: 0, platoTenths: null, depositCents: 15 } as const;
 
 describe("excise", () => {
@@ -40,12 +41,64 @@ describe("excise", () => {
   });
 });
 
+describe("excise bands", () => {
+  // NL-style bands: wine by alcohol and still/sparkling, beer per hl by Plato band.
+  const r = (category: string, rateCents: number, band: Partial<RateRow> = {}, validFrom = "2026-01-01") =>
+    ({ country: "NL", category, basis: "HL_PRODUCT", rateCents, validFrom: new Date(validFrom), ...band }) as RateRow;
+  const bands = [
+    r("WINE", 4900, { abvMaxBp: 850, sparkling: false }),
+    r("WINE", 9800, { abvMinBp: 850, sparkling: false }),
+    r("WINE", 26500, { abvMinBp: 850, sparkling: true }),
+    r("BEER", 1100, { platoMaxTenths: 70 }),
+    r("BEER", 4400, { platoMinTenths: 70, platoMaxTenths: 110 }),
+    r("BEER", 5200, { platoMinTenths: 110 }),
+  ];
+  const wine = (abvBp: number, sparkling = false) => ({ category: "WINE", volumeMl: 750, abvBp, platoTenths: null, sparkling }) as const;
+  const beer = (platoTenths: number | null) => ({ category: "BEER", volumeMl: 330, abvBp: 500, platoTenths }) as const;
+
+  it("puts each product in its band; lower bounds exclusive, upper inclusive", () => {
+    expect(rateFor(bands, wine(850))?.rateCents).toBe(4900);
+    expect(rateFor(bands, wine(851))?.rateCents).toBe(9800);
+    expect(rateFor(bands, wine(1200, true))?.rateCents).toBe(26500);
+    expect(rateFor(bands, wine(800, true))).toBeUndefined(); // no band for light sparkling wine here
+    expect(rateFor(bands, beer(70))?.rateCents).toBe(1100);
+    expect(rateFor(bands, beer(118))?.rateCents).toBe(5200);
+    expect(rateFor(bands, beer(null))).toBeUndefined(); // Plato unknown → no Plato band fits
+    expect(exciseForQty(wine(1200, true), rateFor(bands, wine(1200, true)), 6)).toBe(Math.round(0.0075 * 26500 * 6));
+  });
+
+  it("prefers the more specific band", () => {
+    const withFallback = [r("WINE", 1000), r("WINE", 2000, { sparkling: true })];
+    expect(rateFor(withFallback, wine(1200, true))?.rateCents).toBe(2000);
+    expect(rateFor(withFallback, wine(1200))?.rateCents).toBe(1000);
+  });
+
+  it("detects overlapping bands", () => {
+    expect(bandsOverlap({ abvMaxBp: 850 }, { abvMinBp: 850 })).toBe(false);
+    expect(bandsOverlap({ abvMaxBp: 900 }, { abvMinBp: 850 })).toBe(true);
+    expect(bandsOverlap({ abvMaxBp: 900, sparkling: true }, { abvMinBp: 850, sparkling: false })).toBe(false);
+    expect(bandsOverlap({}, { platoMinTenths: 70 })).toBe(true);
+    expect(inBand({ sparkling: false }, wine(1200))).toBe(true);
+  });
+
+  it("applies the latest version per category as a whole", () => {
+    const rows = [r("WINE", 9000, {}, "2025-01-01"), r("WINE", 4900, { abvMaxBp: 850 }, "2026-01-01"), r("WINE", 9800, { abvMinBp: 850 }, "2026-01-01"), r("BEER", 4000, {}, "2025-01-01")];
+    expect(inForce(rows).map((x) => x.rateCents).sort()).toEqual([4000, 4900, 9800]);
+  });
+
+  it("labels bands", () => {
+    expect(bandLabel({ abvMinBp: 850, sparkling: true })).toBe("> 8.5% · sparkling");
+    expect(bandLabel({ platoMinTenths: 70, platoMaxTenths: 110 })).toBe("> 7 °P – 11 °P");
+    expect(bandLabel({})).toBe("");
+  });
+});
+
 describe("sales tax engine", () => {
   it("domestic: excise per bottle, VAT over price + excise + deposit, 9% on soft drinks", () => {
     const r = calcInvoice({
       country: "NL",
       regime: "DOMESTIC",
-      rates: RATES,
+      rates: RATE_LIST,
       lines: [
         { product: rioja, qtyUnits: 60, unitPriceCents: 980 },
         { product: water, qtyUnits: 24, unitPriceCents: 95 },
@@ -57,12 +110,12 @@ describe("sales tax engine", () => {
     expect(r.totalCents).toBe(r.netCents + r.exciseCents + r.depositCents + r.vatCents);
   });
   it("EU B2B: no excise, no VAT, ICP code", () => {
-    const r = calcInvoice({ country: "NL", regime: "EU_B2B", rates: RATES, lines: [{ product: glen, qtyUnits: 12, unitPriceCents: 3400 }] });
+    const r = calcInvoice({ country: "NL", regime: "EU_B2B", rates: RATE_LIST, lines: [{ product: glen, qtyUnits: 12, unitPriceCents: 3400 }] });
     expect(r).toMatchObject({ exciseCents: 0, vatCents: 0, totalCents: 40800 });
     expect(r.lines[0]!.vatCode).toBe(VAT.ICP);
   });
   it("export: no excise, 0% VAT, EXPORT code", () => {
-    const r = calcInvoice({ country: "NL", regime: "EXPORT", rates: RATES, lines: [{ product: glen, qtyUnits: 6, unitPriceCents: 2600 }] });
+    const r = calcInvoice({ country: "NL", regime: "EXPORT", rates: RATE_LIST, lines: [{ product: glen, qtyUnits: 6, unitPriceCents: 2600 }] });
     expect(r.lines[0]).toMatchObject({ exciseCents: 0, vatCents: 0, vatCode: VAT.EXPORT });
   });
   it("determines the regime from the customer", () => {

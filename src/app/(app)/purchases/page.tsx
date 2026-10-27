@@ -4,7 +4,7 @@ import { canEditIn, requireApp, tenant } from "@/lib/app-context";
 import { getI18n } from "@/i18n/server";
 import { Icon } from "@/components/icon";
 import { Empty, TabLinks } from "@/components/ui";
-import { excisePerUnit, ratesOn } from "@/lib/domain/excise";
+import { excisePerUnit, ratesOn, rateFor } from "@/lib/domain/excise";
 import { accountName } from "@/lib/domain/chart";
 import { seesFinancials } from "@/lib/permissions";
 import { PeriodSelect } from "@/components/period-select";
@@ -57,7 +57,7 @@ export default async function PurchasesPage({ searchParams }: { searchParams: Pr
   const refs: ProposalRefsView = {
     baseCurrency: ctx.administration.baseCurrency,
     suppliers: d.suppliers,
-    products: d.products.map((p) => ({ id: p.id, label: `${p.name} · ${p.volumeMl / 1000} L${p.abvBp ? ` · ${p.abvBp / 100}%` : ""}`, sku: p.sku, exciseUnit: excisePerUnit(p, d.rates.get(p.category)) })),
+    products: d.products.map((p) => ({ id: p.id, label: `${p.name} · ${p.volumeMl / 1000} L${p.abvBp ? ` · ${p.abvBp / 100}%` : ""}`, sku: p.sku, exciseUnit: excisePerUnit(p, rateFor(d.rates, p)) })),
     warehouses: d.warehouses,
     accounts: d.accounts.filter((a) => a.type === "COST" || a.type === "ASSET").map((a) => ({ code: a.code, name: accountName(a, lang) })),
     shipments: d.shipments.map((s) => ({ id: s.id, label: `${s.ref} · ${s.goods}` })),

@@ -1,7 +1,7 @@
 import type { StockReason, WarehouseKind } from "@prisma/client";
 import type { Tx } from "./types";
 import { ACC, STOCK_ACCOUNT } from "./chart";
-import { exciseForQty, ratesOn } from "./excise";
+import { exciseForQty, ratesOn, rateFor } from "./excise";
 import { post, PostingError } from "./ledger";
 
 export type StockLevels = Map<string, Map<string, number>>; // productId → warehouseId → units
@@ -75,7 +75,7 @@ export async function transferStock(tx: Tx, input: MoveBase & { fromWarehouseId:
   let exciseCents = 0;
   if (release) {
     const rates = await ratesOn(tx, input.country, at);
-    exciseCents = exciseForQty(product, rates.get(product.category), input.qty);
+    exciseCents = exciseForQty(product, rateFor(rates, product), input.qty);
   }
   const mv = await tx.stockMovement.create({
     data: {
@@ -125,7 +125,7 @@ export async function takeSample(tx: Tx, input: MoveBase & { warehouseId: string
   const at = input.at ?? new Date();
   const bonded = wh.kind !== "DUTY_PAID";
   const rates = await ratesOn(tx, input.country, at);
-  const exciseCents = bonded ? exciseForQty(product, rates.get(product.category), input.qty) : 0;
+  const exciseCents = bonded ? exciseForQty(product, rateFor(rates, product), input.qty) : 0;
   const mv = await tx.stockMovement.create({
     data: {
       administrationId: input.administrationId,

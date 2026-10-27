@@ -1,7 +1,7 @@
 import type { PurchaseVatTreatment } from "@prisma/client";
 import type { Tx } from "./types";
 import { ACC, STOCK_ACCOUNT } from "./chart";
-import { exciseForQty, ratesOn } from "./excise";
+import { exciseForQty, ratesOn, rateFor } from "./excise";
 import { post, PostingError } from "./ledger";
 import { receiveStock } from "./stock";
 import { isEU, STANDARD_RATE, VAT } from "./vat";
@@ -110,7 +110,7 @@ export async function bookPurchase(tx: Tx, input: { administrationId: string; in
         createdById: input.userId,
       });
       units += l.qty;
-      if (warehouse.kind !== "DUTY_PAID") exciseOnRelease += exciseForQty(product, rates.get(product.category), l.qty);
+      if (warehouse.kind !== "DUTY_PAID") exciseOnRelease += exciseForQty(product, rateFor(rates, product), l.qty);
     }
   }
 

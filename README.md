@@ -180,6 +180,19 @@ from the old package), and open invoices arrive as balances per relation rather 
 The same screen exports any fiscal year as **XAF 3.2** (validated against the official XSD) for the
 accountant, a Belastingdienst audit, or moving on.
 
+## Excise rates
+
+Rates live in the admin console (**Excise rates**), per country and product category, as versions with a start
+date. A version can hold several **bands** — an alcohol range, a Plato range and/or still vs sparkling — and each
+product gets the most specific band it falls in (lower bounds exclusive, upper inclusive). The demo follows the Dutch
+structure: wine up to / above 8.5% still and sparkling, intermediate products up to / above 15%, beer per hl by
+Plato band, spirits per hl of pure alcohol; the amounts are samples to replace with the official Douane table.
+
+Scheduled versions can be edited or deleted freely. A version that is or was in force can be corrected or deleted
+only with a reason, and only while no administration in that country has filed an excise return for a period it
+covers (otherwise add a new version). Booked invoices keep the excise they were booked with; every change is
+audit-logged with before and after.
+
 ## Not yet automated
 
 These need contracts or certifications with third parties and are later milestones in the handoff's build order:

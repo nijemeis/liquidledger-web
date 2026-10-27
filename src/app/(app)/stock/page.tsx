@@ -4,7 +4,7 @@ import type { WarehouseKind } from "@prisma/client";
 import { canEditIn, requireApp, tenant } from "@/lib/app-context";
 import { getI18n } from "@/i18n/server";
 import { Empty, PageHead, TONE, type Tone } from "@/components/ui";
-import { excisePerUnit, ratesOn } from "@/lib/domain/excise";
+import { excisePerUnit, ratesOn, rateFor } from "@/lib/domain/excise";
 import { stockLevels, unitsIn } from "@/lib/domain/stock";
 import { seesFinancials } from "@/lib/permissions";
 import { StockActions, type StockProduct, type StockWarehouse } from "./stock-actions";
@@ -45,7 +45,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
     return { warehouses, products, levels, rates, selected, movements };
   });
 
-  const perUnit = new Map(d.products.map((p) => [p.id, excisePerUnit(p, d.rates.get(p.category))]));
+  const perUnit = new Map(d.products.map((p) => [p.id, excisePerUnit(p, rateFor(d.rates, p))]));
   const whName = new Map(d.warehouses.map((w) => [w.id, w.name]));
   const prodById = new Map(d.products.map((p) => [p.id, p]));
 

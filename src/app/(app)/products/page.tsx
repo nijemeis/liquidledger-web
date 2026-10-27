@@ -5,7 +5,7 @@ import { getI18n } from "@/i18n/server";
 import { Icon } from "@/components/icon";
 import { CATEGORY_STYLE, CategoryTile, PageHead } from "@/components/ui";
 import { seesFinancials } from "@/lib/permissions";
-import { excisePerUnit, exciseFormula, ratesOn } from "@/lib/domain/excise";
+import { bandLabel, excisePerUnit, exciseFormula, ratesOn, rateFor } from "@/lib/domain/excise";
 import { stockLevels, unitsIn } from "@/lib/domain/stock";
 import { countryName, flag, COUNTRY_CODES } from "@/lib/countries";
 import { ProductDrawer, type ProductView, type ProductEdit } from "./product-drawer";
@@ -82,8 +82,9 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   let view: ProductView | null = null;
   let edit: ProductEdit | null = null;
   if (sel) {
-    const rate = d.rates.get(sel.category);
+    const rate = rateFor(d.rates, sel);
     const ex = excisePerUnit(sel, rate);
+    const band = rate ? bandLabel(rate, { sparkling: t("excise.band.sparkling"), still: t("excise.band.still") }) : "";
     const facts: [string, string][] = [
       [t("products.ean"), sel.ean ?? "—"],
       [t("products.volume"), litres(sel.volumeMl)],
@@ -91,6 +92,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     ];
     if (sel.category === "BEER" && sel.platoTenths) facts.push([t("products.gravity"), `${fmt.num(sel.platoTenths / 10, 1)} °P`]);
     else if (sel.vintage) facts.push([t("products.age"), sel.vintage]);
+    if (sel.sparkling) facts.push([t("products.fSparkling"), t("products.yes")]);
     facts.push(
       [t("products.caseSize"), t("products.units", { n: sel.unitsPerCase })],
       [t("products.pallet"), sel.casesPerPallet ? t("products.cases", { n: sel.casesPerPallet }) : "—"],
@@ -123,8 +125,10 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       exCase: fmt.money(Math.round(ex * sel.unitsPerCase)),
       deposit: sel.depositCents ? t("products.depositPerUnit", { amount: fmt.money(sel.depositCents) }) : t("products.none"),
       exFormula: ex
-        ? t("products.exFormula", { formula: exciseFormula(sel, rate), country: ctx.administration.country })
-        : t("products.noExcise") + (sel.depositCents ? t("products.depositNote") : ""),
+        ? t("products.exFormula", { formula: exciseFormula(sel, rate) + (band ? ` (${band})` : ""), country: ctx.administration.country })
+        : !rate && sel.abvBp > 0 && sel.category !== "WATER" && sel.category !== "SOFT"
+          ? t("products.noRateMatch", { country: ctx.administration.country })
+          : t("products.noExcise") + (sel.depositCents ? t("products.depositNote") : ""),
       stock: stock.length ? stock : [{ l: t("products.noStock"), v: "—" }],
       reorder: sel.reorderLevel ? t("products.reorder", { n: fmt.int(sel.reorderLevel) }) : t("products.noReorder"),
       low: Boolean(sel.reorderLevel && unitsIn(d.levels, sel.id) < sel.reorderLevel),
@@ -146,6 +150,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       volumeL: p ? String(p.volumeMl / 1000) : "0.75",
       abv: p ? String(p.abvBp / 100) : "",
       plato: p?.platoTenths ? String(p.platoTenths / 10) : "",
+      sparkling: p?.sparkling ?? false,
       vintage: p?.vintage ?? "",
       unitsPerCase: String(p?.unitsPerCase ?? 6),
       casesPerPallet: p?.casesPerPallet ? String(p.casesPerPallet) : "",
@@ -223,7 +228,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
               const n = unitsIn(d.levels, p.id);
               const low = Boolean(p.reorderLevel && n < p.reorderLevel);
               const price = latest(p, "Horeca") ?? latest(p, lists(p)[0] ?? "");
-              const ex = excisePerUnit(p, d.rates.get(p.category));
+              const ex = excisePerUnit(p, rateFor(d.rates, p));
               return (
                 <Link key={p.id} href={href({ id: p.id, new: undefined, edit: undefined })} scroll={false} className="tbl-row n" style={{ gridTemplateColumns: cols, gap: 12, padding: "10px 16px", opacity: p.archivedAt ? 0.55 : 1 }}>
                   <CategoryTile category={p.category} size={36} />

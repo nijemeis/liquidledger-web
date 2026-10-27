@@ -1,6 +1,6 @@
 import "server-only";
 import type { Tx } from "@/lib/db";
-import { excisePerUnit, ratesOn } from "@/lib/domain/excise";
+import { excisePerUnit, ratesOn, rateFor } from "@/lib/domain/excise";
 import { stockLevels, unitsIn } from "@/lib/domain/stock";
 
 export interface ArrivalLine {
@@ -52,7 +52,7 @@ export async function pendingArrival(tx: Tx, administrationId: string, shipmentI
     if (!p) continue;
     const qty = Math.min(q, unitsIn(levels, productId, fromWarehouseId));
     if (qty <= 0) continue;
-    out.push({ productId, name: p.name, sku: p.sku, fromWarehouseId, qty, excisePerUnit: excisePerUnit(p, rates.get(p.category)) });
+    out.push({ productId, name: p.name, sku: p.sku, fromWarehouseId, qty, excisePerUnit: excisePerUnit(p, rateFor(rates, p)) });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }

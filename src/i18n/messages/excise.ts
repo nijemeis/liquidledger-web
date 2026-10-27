@@ -48,6 +48,7 @@ export default ns({
       plato: "{hl} hl × {plato} °P × {rate}",
       alcohol: "{hl} hl alcohol × {rate}",
     },
+    band: { sparkling: "sparkling", still: "still" },
     fig: {
       licence: "Excise licence number",
       period: "Period",
@@ -177,6 +178,7 @@ export default ns({
       plato: "{hl} hl × {plato} °P × {rate}",
       alcohol: "{hl} hl alcohol × {rate}",
     },
+    band: { sparkling: "mousserend", still: "niet-mousserend" },
     fig: {
       licence: "Accijnsvergunningnummer",
       period: "Tijdvak",
@@ -306,6 +308,7 @@ export default ns({
       plato: "{hl} hl × {plato} °P × {rate}",
       alcohol: "{hl} hl d’alcool × {rate}",
     },
+    band: { sparkling: "mousseux", still: "tranquille" },
     fig: {
       licence: "Numéro d’agrément accises",
       period: "Période",
@@ -435,6 +438,7 @@ export default ns({
       plato: "{hl} hl × {plato} °P × {rate}",
       alcohol: "{hl} hl Alkohol × {rate}",
     },
+    band: { sparkling: "schäumend", still: "nicht schäumend" },
     fig: {
       licence: "Verbrauchsteuer-Erlaubnisnummer",
       period: "Zeitraum",
@@ -564,6 +568,7 @@ export default ns({
       plato: "{hl} hl × {plato} °P × {rate}",
       alcohol: "{hl} hl anidri × {rate}",
     },
+    band: { sparkling: "spumante", still: "fermo" },
     fig: {
       licence: "Numero di licenza accise",
       period: "Periodo",
@@ -693,6 +698,7 @@ export default ns({
       plato: "{hl} hl × {plato} °P × {rate}",
       alcohol: "{hl} hl de alcohol × {rate}",
     },
+    band: { sparkling: "espumoso", still: "tranquilo" },
     fig: {
       licence: "Número de autorización (CAE)",
       period: "Periodo",
@@ -822,6 +828,7 @@ export default ns({
       plato: "{hl} hl × {plato} °P × {rate}",
       alcohol: "{hl} hl alkoholu × {rate}",
     },
+    band: { sparkling: "musujące", still: "niemusujące" },
     fig: {
       licence: "Numer zezwolenia akcyzowego",
       period: "Okres",

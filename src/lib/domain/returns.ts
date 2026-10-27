@@ -1,7 +1,7 @@
 import type { TaxReturnType } from "@prisma/client";
 import type { Tx } from "./types";
 import { ACC } from "./chart";
-import { ratesOn, returnBasis } from "./excise";
+import { ratesOn, returnBasis, rateFor } from "./excise";
 import { computeBoxes, vatReturnLayout, type VatCode, type VatTotals } from "./vat";
 
 // ── Periods ──────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export async function exciseReturn(tx: Tx, administrationId: string, p: Period) 
   const rows = [...per]
     .map(([pid, v]) => {
       const product = products.find((x) => x.id === pid)!;
-      const rate = rates.get(product.category);
+      const rate = rateFor(rates, product);
       const basis = rate ? returnBasis(product, rate, v.units) : { hl: (v.units * product.volumeMl) / 100_000, text: "—" };
       return {
         productId: pid,
@@ -132,6 +132,8 @@ export async function exciseReturn(tx: Tx, administrationId: string, p: Period) 
         // Structured basis so screens can format it per locale.
         basisKind: rate?.basis ?? null,
         rateCents: rate?.rateCents ?? 0,
+        // Band the rate belongs to (alcohol / Plato range, still or sparkling), if any.
+        band: rate ? { abvMinBp: rate.abvMinBp, abvMaxBp: rate.abvMaxBp, platoMinTenths: rate.platoMinTenths, platoMaxTenths: rate.platoMaxTenths, sparkling: rate.sparkling } : null,
         abvBp: product.abvBp,
         platoTenths: product.platoTenths,
         alcoholHl: (basis.hl * product.abvBp) / 10_000,

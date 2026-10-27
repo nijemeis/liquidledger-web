@@ -1,7 +1,7 @@
 import type { Product, TaxRegime } from "@prisma/client";
 import type { Tx } from "./types";
 import { ACC, REVENUE_ACCOUNT, STOCK_ACCOUNT } from "./chart";
-import { exciseForQty, exciseFormula, ratesOn, type RateRow } from "./excise";
+import { exciseForQty, exciseFormula, ratesOn, type RateRow, rateFor } from "./excise";
 import { nextNumber, post, PostingError } from "./ledger";
 import { stockLevels, unitsIn } from "./stock";
 import { DOMESTIC_RATE, salesVatCode, STANDARD_RATE, VAT } from "./vat";
@@ -12,7 +12,7 @@ import { DOMESTIC_RATE, salesVatCode, STANDARD_RATE, VAT } from "./vat";
 //  · Export: no excise; VAT 0% (box 3a); export declaration drafted.
 
 export interface CalcLineInput {
-  product: Pick<Product, "id" | "name" | "sku" | "category" | "volumeMl" | "abvBp" | "platoTenths" | "depositCents">;
+  product: Pick<Product, "id" | "name" | "sku" | "category" | "volumeMl" | "abvBp" | "platoTenths" | "depositCents"> & { sparkling?: boolean };
   qtyUnits: number;
   unitPriceCents: number;
 }
@@ -31,12 +31,12 @@ export interface CalcLine {
   vatCents: number;
 }
 
-export function calcInvoice(input: { country: string; regime: TaxRegime; lines: CalcLineInput[]; rates: Map<string, RateRow> }) {
+export function calcInvoice(input: { country: string; regime: TaxRegime; lines: CalcLineInput[]; rates: readonly RateRow[] }) {
   const { country, regime } = input;
   const domestic = regime === "DOMESTIC";
   const lines: CalcLine[] = input.lines.map((l) => {
     const netCents = Math.round(l.qtyUnits * l.unitPriceCents);
-    const rate = input.rates.get(l.product.category);
+    const rate = rateFor(input.rates, l.product);
     const exciseCents = domestic ? exciseForQty(l.product, rate, l.qtyUnits) : 0;
     const depositCents = domestic ? l.qtyUnits * l.product.depositCents : 0;
     const vatRateBp = domestic ? (DOMESTIC_RATE[country]?.[l.product.category] ?? STANDARD_RATE[country] ?? 2100) : 0;

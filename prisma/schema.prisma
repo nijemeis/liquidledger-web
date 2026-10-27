@@ -423,6 +423,13 @@ model ExciseRate {
   basis     ExciseBasis
   rateCents Int             @map("rate_cents") // per basis unit, in cents
   validFrom DateTime        @map("valid_from") @db.Date
+  // Band within the category (all optional; a product must meet every condition set).
+  // Lower bounds are exclusive, upper bounds inclusive: "up to 8.5%" = abvMaxBp 850, "above 8.5%" = abvMinBp 850.
+  abvMinBp       Int?     @map("abv_min_bp")
+  abvMaxBp       Int?     @map("abv_max_bp")
+  platoMinTenths Int?     @map("plato_min_tenths")
+  platoMaxTenths Int?     @map("plato_max_tenths")
+  sparkling      Boolean? // null = still and sparkling alike
   note      String?
   createdAt DateTime        @default(now()) @map("created_at")
   createdBy String?         @map("created_by")
@@ -514,6 +521,7 @@ model Product {
   volumeMl         Int             @map("volume_ml")
   abvBp            Int             @default(0) @map("abv_bp") // alcohol % × 100 (13.5% = 1350)
   platoTenths      Int?            @map("plato_tenths") // °P × 10
+  sparkling        Boolean         @default(false) @map("sparkling") // sparkling wine / intermediate products have their own excise bands
   vintage          String?
   unitsPerCase     Int             @default(6) @map("units_per_case")
   casesPerPallet   Int?            @map("cases_per_pallet")

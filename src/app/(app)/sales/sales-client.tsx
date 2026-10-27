@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ExciseBasis, ProductCategory, TaxRegime, WarehouseKind } from "@prisma/client";
+import type { ProductCategory, TaxRegime, WarehouseKind } from "@prisma/client";
 import { Drawer, Modal, useAction } from "@/components/client";
 import { Icon } from "@/components/icon";
 import { useI18n } from "@/i18n/client";
@@ -34,6 +34,7 @@ export interface ProductOpt {
   volumeMl: number;
   abvBp: number;
   platoTenths: number | null;
+  sparkling: boolean;
   depositCents: number;
   unitsPerCase: number;
   prices: { list: string; unitPriceCents: number; validFrom: Date }[];
@@ -45,7 +46,7 @@ export interface EditorData {
   preselect?: string | null;
   products: ProductOpt[];
   warehouses: { id: string; name: string; kind: WarehouseKind }[];
-  rates: { country: string; category: ProductCategory; basis: ExciseBasis; rateCents: number; validFrom: Date }[];
+  rates: RateRow[];
   stock: Record<string, Record<string, number>>;
   nextNumber: string;
   topCustomerIds: string[];
@@ -153,7 +154,7 @@ export function InvoiceEditor({ data, closeHref }: { data: EditorData; closeHref
   const draft = data.draft;
   const custById = useMemo(() => new Map(data.customers.map((c) => [c.id, c])), [data.customers]);
   const prodById = useMemo(() => new Map(data.products.map((p) => [p.id, p])), [data.products]);
-  const rates = useMemo(() => new Map<string, RateRow>(data.rates.map((r) => [r.category, r])), [data.rates]);
+  const rates: RateRow[] = data.rates;
 
   const initialCustomer = draft?.customerId ?? (data.preselect && custById.has(data.preselect) ? data.preselect : data.topCustomerIds.find((id) => custById.has(id)) ?? data.customers[0]?.id ?? "");
   const [customerId, setCustomerId] = useState(initialCustomer);

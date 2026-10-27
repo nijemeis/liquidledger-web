@@ -3,8 +3,62 @@ import type { ExciseBasis, ExciseRate, Product, ProductCategory, Tx } from "./ty
 // Excise per unit, from volume, alcohol % and category (DOMAIN_AND_DATA.md §5).
 // Rates come from the versioned `excise_rates` table: never hard-code them.
 
-export type RateRow = Pick<ExciseRate, "country" | "category" | "basis" | "rateCents" | "validFrom">;
-export type ExciseProduct = Pick<Product, "category" | "volumeMl" | "abvBp" | "platoTenths">;
+export type RateBand = Pick<ExciseRate, "abvMinBp" | "abvMaxBp" | "platoMinTenths" | "platoMaxTenths" | "sparkling">;
+export type RateRow = Pick<ExciseRate, "country" | "category" | "basis" | "rateCents" | "validFrom"> & Partial<RateBand>;
+export type ExciseProduct = Pick<Product, "category" | "volumeMl" | "abvBp" | "platoTenths"> & { sparkling?: boolean };
+
+// ── Bands ────────────────────────────────────────────────────────────────────
+// A category can have several rates in force at once, each for a band: an
+// alcohol range, a Plato range and/or still vs sparkling (e.g. NL wine up to
+// and above 8.5%, still and sparkling; intermediate products up to and above
+// 15%; beer by Plato band). Lower bounds are exclusive, upper bounds inclusive.
+
+/** Does the product fall in this rate's band? A product without a Plato value never matches a Plato band. */
+export function inBand(r: Partial<RateBand>, p: ExciseProduct): boolean {
+  if (r.abvMinBp != null && !(p.abvBp > r.abvMinBp)) return false;
+  if (r.abvMaxBp != null && !(p.abvBp <= r.abvMaxBp)) return false;
+  if (r.platoMinTenths != null || r.platoMaxTenths != null) {
+    if (p.platoTenths == null) return false;
+    if (r.platoMinTenths != null && !(p.platoTenths > r.platoMinTenths)) return false;
+    if (r.platoMaxTenths != null && !(p.platoTenths <= r.platoMaxTenths)) return false;
+  }
+  if (r.sparkling != null && r.sparkling !== Boolean(p.sparkling)) return false;
+  return true;
+}
+
+const conditions = (r: Partial<RateBand>) =>
+  [r.abvMinBp, r.abvMaxBp, r.platoMinTenths, r.platoMaxTenths, r.sparkling].filter((v) => v !== null && v !== undefined).length;
+
+/** The rate that applies to a product: the most specific band of its category it falls in. */
+export function rateFor<R extends RateRow>(rates: readonly R[], p: ExciseProduct): R | undefined {
+  let best: R | undefined;
+  for (const r of rates) {
+    if (r.category !== p.category || !inBand(r, p)) continue;
+    if (!best || conditions(r) > conditions(best)) best = r;
+  }
+  return best;
+}
+
+/** Two bands overlap when some product could fall in both. */
+export function bandsOverlap(a: Partial<RateBand>, b: Partial<RateBand>): boolean {
+  const range = (min?: number | null, max?: number | null) => [min ?? -Infinity, max ?? Infinity] as const;
+  const overlaps = (x: readonly [number, number], y: readonly [number, number]) => x[0] < y[1] && y[0] < x[1];
+  if (!overlaps(range(a.abvMinBp, a.abvMaxBp), range(b.abvMinBp, b.abvMaxBp))) return false;
+  if (!overlaps(range(a.platoMinTenths, a.platoMaxTenths), range(b.platoMinTenths, b.platoMaxTenths))) return false;
+  if (a.sparkling != null && b.sparkling != null && a.sparkling !== b.sparkling) return false;
+  return true;
+}
+
+/** "> 8.5% · sparkling", "> 7–11 °P", or "" for a rate without conditions. */
+export function bandLabel(r: Partial<RateBand>, words: { sparkling: string; still: string } = { sparkling: "sparkling", still: "still" }): string {
+  const pct = (bp: number) => `${(bp / 100).toLocaleString("en-GB", { maximumFractionDigits: 2 })}%`;
+  const pl = (t: number) => `${(t / 10).toLocaleString("en-GB", { maximumFractionDigits: 1 })} °P`;
+  const span = (min: number | null | undefined, max: number | null | undefined, f: (n: number) => string) =>
+    min != null && max != null ? `> ${f(min)} – ${f(max)}` : min != null ? `> ${f(min)}` : max != null ? `≤ ${f(max)}` : "";
+  return [span(r.abvMinBp, r.abvMaxBp, pct), span(r.platoMinTenths, r.platoMaxTenths, pl), r.sparkling == null ? "" : r.sparkling ? words.sparkling : words.still]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /** Excise per unit in (fractional) cents. Round only at line level. */
 export function excisePerUnit(p: ExciseProduct, rate: Pick<RateRow, "basis" | "rateCents"> | null | undefined): number {
@@ -62,15 +116,23 @@ export function returnBasis(p: ExciseProduct, rate: Pick<RateRow, "basis" | "rat
   }
 }
 
-/** Rates in force on `date` for a country, one per category. */
-export async function ratesOn(tx: Tx, country: string, date: Date): Promise<Map<ProductCategory, RateRow>> {
+/**
+ * Rates in force on `date` for a country. Per category, the latest version on
+ * or before `date` applies as a whole (all its bands); pick one with rateFor().
+ */
+export async function ratesOn(tx: Tx, country: string, date: Date): Promise<ExciseRate[]> {
   const rows = await tx.exciseRate.findMany({
     where: { country, validFrom: { lte: date } },
     orderBy: { validFrom: "desc" },
   });
-  const map = new Map<ProductCategory, RateRow>();
-  for (const r of rows) if (!map.has(r.category)) map.set(r.category, r);
-  return map;
+  return inForce(rows);
+}
+
+/** From rows on or before a date (any order): the latest version per category, all of its bands. */
+export function inForce<R extends RateRow>(rows: readonly R[]): R[] {
+  const latest = new Map<ProductCategory, number>();
+  for (const r of rows) latest.set(r.category, Math.max(latest.get(r.category) ?? -Infinity, r.validFrom.getTime()));
+  return rows.filter((r) => r.validFrom.getTime() === latest.get(r.category));
 }
 
 export const BASIS_FOR: Record<ProductCategory, ExciseBasis> = {

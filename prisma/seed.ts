@@ -21,6 +21,7 @@ import { transferStock } from "../src/lib/domain/stock";
 import { bookReceipt, receiptLines } from "../src/lib/domain/receipts";
 import { reconcile, importHash } from "../src/lib/domain/bank";
 import { ACC } from "../src/lib/domain/chart";
+import { excisePerUnit, rateFor } from "../src/lib/domain/excise";
 
 if (process.env.NODE_ENV === "production" && process.env.SEED_DEMO !== "1") {
   console.error("Refusing to seed demo data in production. Set SEED_DEMO=1 to override.");
@@ -170,16 +171,27 @@ async function main() {
   // Platform settings & excise rates (illustrative NL rates — maintain via the admin console).
   await prisma.platformSetting.create({ data: { key: "security", value: { trust30: true, newDevice: true, ipAllow: false, ipAllowList: [], sso: true } } });
   const rateFrom = new Date(Date.UTC(TODAY.getUTCFullYear(), 0, 1));
-  const rates: [ProductCategory, "HL_PER_ABV" | "HL_PRODUCT" | "HL_PURE_ALCOHOL" | "NONE", number][] = [
-    ["BEER", "HL_PER_ABV", 910],
-    ["WINE", "HL_PRODUCT", 9800],
-    ["FORTIFIED", "HL_PRODUCT", 18200],
-    ["SPIRITS", "HL_PURE_ALCOHOL", 199100],
-    ["WATER", "NONE", 0],
-    ["SOFT", "NONE", 0],
+  // Dutch structure: wine and intermediate products by alcohol band (wine also still vs sparkling),
+  // beer per hl by Plato band, spirits per hl of pure alcohol. Amounts are samples.
+  type Band = { abvMinBp?: number; abvMaxBp?: number; platoMinTenths?: number; platoMaxTenths?: number; sparkling?: boolean };
+  const rates: [ProductCategory, "HL_PRODUCT" | "HL_PURE_ALCOHOL" | "NONE", number, Band][] = [
+    ["WINE", "HL_PRODUCT", 4900, { abvMaxBp: 850, sparkling: false }],
+    ["WINE", "HL_PRODUCT", 9800, { abvMinBp: 850, sparkling: false }],
+    ["WINE", "HL_PRODUCT", 4900, { abvMaxBp: 850, sparkling: true }],
+    ["WINE", "HL_PRODUCT", 26500, { abvMinBp: 850, sparkling: true }],
+    ["FORTIFIED", "HL_PRODUCT", 11000, { abvMaxBp: 1500 }],
+    ["FORTIFIED", "HL_PRODUCT", 18200, { abvMinBp: 1500 }],
+    ["BEER", "HL_PRODUCT", 1100, { platoMaxTenths: 70 }],
+    ["BEER", "HL_PRODUCT", 4400, { platoMinTenths: 70, platoMaxTenths: 110 }],
+    ["BEER", "HL_PRODUCT", 5200, { platoMinTenths: 110, platoMaxTenths: 150 }],
+    ["BEER", "HL_PRODUCT", 6100, { platoMinTenths: 150 }],
+    ["SPIRITS", "HL_PURE_ALCOHOL", 199100, {}],
+    ["WATER", "NONE", 0, {}],
+    ["SOFT", "NONE", 0, {}],
   ];
+  const rateRows = rates.map(([category, basis, rateCents, band]) => ({ country: "NL", category, basis, rateCents, validFrom: rateFrom, ...band }));
   await prisma.exciseRate.createMany({
-    data: rates.map(([category, basis, rateCents]) => ({ country: "NL", category, basis, rateCents, validFrom: rateFrom, note: "Illustrative sample rate — verify against the official Douane table", createdBy: "seed" })),
+    data: rates.map(([category, basis, rateCents, band]) => ({ country: "NL", category, basis, rateCents, validFrom: rateFrom, ...band, note: "Illustrative sample rate — verify against the official Douane table", createdBy: "seed" })),
   });
 
   // Staff (passkey set-up links printed below).
@@ -341,10 +353,8 @@ async function main() {
         else {
           stockAms += qty * eur(p.cost);
           // Excise already paid on duty-paid opening stock.
-          const rate = rates.find((r) => r[0] === p.cat)!;
-          const hl = p.ml / 100_000;
-          const per = rate[1] === "HL_PER_ABV" ? hl * p.abv * rate[2] : rate[1] === "HL_PURE_ALCOHOL" ? hl * (p.abv / 100) * rate[2] : rate[1] === "HL_PRODUCT" ? hl * rate[2] : 0;
-          prepaid += Math.round(per * qty);
+          const ep = { category: p.cat, volumeMl: p.ml, abvBp: Math.round(p.abv * 100), platoTenths: "plato" in p ? p.plato : null };
+          prepaid += Math.round(excisePerUnit(ep, rateFor(rateRows, ep)) * qty);
         }
       }
     }

@@ -41,6 +41,7 @@ export type ProductEdit = {
   volumeL: string;
   abv: string;
   plato: string;
+  sparkling: boolean;
   vintage: string;
   unitsPerCase: string;
   casesPerPallet: string;
@@ -100,7 +101,7 @@ export function ProductDrawer({
   // ── Edit form ──────────────────────────────────────────────────────────────
   if (editing && f) {
     const set = (k: keyof ProductEdit) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF((s) => (s ? { ...s, [k]: e.target.value } : s));
-    const input = (k: Exclude<keyof ProductEdit, "prices" | "id" | "category">, label: string, opts: { hint?: string; mode?: "decimal" | "numeric"; span?: boolean } = {}) => (
+    const input = (k: Exclude<keyof ProductEdit, "prices" | "id" | "category" | "sparkling">, label: string, opts: { hint?: string; mode?: "decimal" | "numeric"; span?: boolean } = {}) => (
       <label className="field" style={opts.span ? { gridColumn: "1 / -1" } : undefined}>
         {label}
         <input className="input" value={f[k]} onChange={set(k)} inputMode={opts.mode} />
@@ -159,6 +160,12 @@ export function ProductDrawer({
           {input("volumeL", t("products.fVolume"), { mode: "decimal" })}
           {input("abv", t("products.fAbv"), { mode: "decimal" })}
           {f.category === "BEER" ? input("plato", t("products.fPlato"), { mode: "decimal" }) : null}
+          {f.category === "WINE" || f.category === "FORTIFIED" ? (
+            <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "end", paddingBottom: 10 }}>
+              <input type="checkbox" className="checkbox" checked={f.sparkling} onChange={(e) => setF((s) => (s ? { ...s, sparkling: e.target.checked } : s))} />
+              {t("products.fSparkling")}
+            </label>
+          ) : null}
           {input("unitsPerCase", t("products.fUnitsPerCase"), { mode: "numeric" })}
           {input("casesPerPallet", t("products.fCasesPerPallet"), { mode: "numeric" })}
           {input("cnCode", t("products.fCn"))}

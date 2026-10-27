@@ -6,6 +6,7 @@ import { Icon } from "@/components/icon";
 import { Empty, PageHead, Pill, Stat, type Tone } from "@/components/ui";
 import { canView } from "@/lib/permissions";
 import { exciseReturn, monthOf, parsePeriod } from "@/lib/domain/returns";
+import { bandLabel } from "@/lib/domain/excise";
 import { ParamSelect } from "../reports/_components/nav";
 import { FileReturn, type Figure } from "../reports/_components/file-return";
 import { fileExcise } from "./actions";
@@ -65,6 +66,11 @@ export default async function ExcisePage({ searchParams }: { searchParams: Promi
 
   const eur = (cents: number) => fmt.money(cents);
   const basisText = (r: (typeof ret.rows)[number]) => {
+    const band = r.band ? bandLabel(r.band, { sparkling: t("excise.band.sparkling"), still: t("excise.band.still") }) : "";
+    const text = basisOnly(r);
+    return band && text !== "—" ? `${text} (${band})` : text;
+  };
+  const basisOnly = (r: (typeof ret.rows)[number]) => {
     const hl = fmt.num(r.hl, 2);
     switch (r.basisKind) {
       case "HL_PRODUCT":
