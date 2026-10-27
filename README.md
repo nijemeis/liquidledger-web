@@ -174,8 +174,9 @@ export of Dutch packages (Reeleezee, Exact, Twinfield, AFAS, Moneybird, e-Boekho
    booked with open items per customer/supplier, and every transaction goes through the posting engine with
    source `IMPORT`. The batch can be reversed as a whole with mirror entries.
 
-Imported entries carry no VAT codes, so they don't feed Liquid Ledger VAT returns (those periods were filed
-from the old package), and open invoices arrive as balances per relation rather than as invoices.
+VAT codes are derived from what each transaction books (turnover with output VAT, costs with input VAT, sales
+without VAT as 0% / ICP / export by the customer's country, equal output and input VAT as reverse charge), so
+imported periods appear on the VAT return. Recognised sales and purchase invoices also appear on their screens.
 
 The same screen exports any fiscal year as **XAF 3.2** (validated against the official XSD) for the
 accountant, a Belastingdienst audit, or moving on.

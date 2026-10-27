@@ -1,5 +1,6 @@
 import type { AccountType } from "@prisma/client";
 import { ACC } from "@/lib/domain/chart";
+import { VAT } from "@/lib/domain/vat";
 
 // Recognises sales and purchase invoices among imported transactions, so they
 // show up in the Sales and Purchases screens (and open ones can be matched to
@@ -87,4 +88,61 @@ export function spreadVat(lines: { netCents: number }[], vatCents: number): numb
     left -= v;
     return v;
   });
+}
+
+export interface VatTag {
+  vatCode: string;
+  vatBase: number | null;
+}
+
+/**
+ * VAT codes for an imported transaction, so the VAT return includes it. Auditfiles
+ * rarely carry codes per line, so they're derived from what the transaction books:
+ * output VAT next to revenue (rate from VAT ÷ revenue), input VAT next to costs,
+ * output and input VAT of equal size without revenue as reverse charge, and
+ * revenue without VAT on a customer invoice as 0% / intra-EU / export by the
+ * customer's country. VAT settlements and payments get no codes.
+ * Returns one entry per line (null = no code), in the same order.
+ */
+export function vatTagsFor(
+  lines: MappedLine[],
+  typeOf: (code: string) => AccountType | undefined,
+  countryOf: (relationId: string) => string | undefined,
+  home: string,
+  isEU: (country: string) => boolean,
+): (VatTag | null)[] {
+  const tags: (VatTag | null)[] = lines.map(() => null);
+  const out = lines.map((l, i) => ({ l, i })).filter(({ l }) => l.account === ACC.vatPayable);
+  const inp = lines.map((l, i) => ({ l, i })).filter(({ l }) => l.account === ACC.vatReclaim);
+  const hasAp = lines.some((l) => l.account === ACC.payables);
+  const hasAr = lines.some((l) => l.account === ACC.receivables);
+  const revenue = lines.map((l, i) => ({ l, i })).filter(({ l }) => typeOf(l.account) === "REVENUE");
+  const costs = lines.filter((l) => typeOf(l.account) === "COST" || (hasAp && typeOf(l.account) === "ASSET" && l.account !== ACC.vatReclaim));
+  const relation = lines.find((l) => l.relationId)?.relationId ?? null;
+  const country = relation ? countryOf(relation) : undefined;
+
+  const revenueNet = -revenue.reduce((a, { l }) => a + l.amount, 0); // credit = positive turnover
+  const outVat = -out.reduce((a, { l }) => a + l.amount, 0);
+  const inVat = inp.reduce((a, { l }) => a + l.amount, 0);
+  const costNet = costs.reduce((a, l) => a + l.amount, 0);
+  // A VAT settlement clears output VAT (debit) against input VAT (credit); it isn't turnover.
+  if (out.length && inp.length && outVat < 0 && inVat < 0) return tags;
+  // An invoice to a customer whose turnover sits on another account (e.g. prepaid sales): everything but receivables and VAT.
+  const salesBase = revenue.length ? revenueNet : hasAr && !inp.length ? -lines.filter((l) => l.account !== ACC.receivables && l.account !== ACC.vatPayable && l.account !== ACC.bank).reduce((a, l) => a + l.amount, 0) : 0;
+
+  if (out.length && salesBase !== 0 && Math.sign(salesBase) === Math.sign(outVat)) {
+    // Nearest Dutch rate: 21% (high) or 9% (low); odd effective rates come from rounding or mixed lines.
+    const code = impliedRateBp(salesBase, outVat) >= 1500 ? VAT.SALES_HIGH : VAT.SALES_LOW;
+    out.forEach(({ i }, k) => (tags[i] = { vatCode: code, vatBase: k === 0 ? salesBase : null }));
+  } else if (out.length && inp.length && outVat === inVat && costNet !== 0) {
+    const code = country && country !== home && !isEU(country) ? VAT.IMPORT : VAT.EU_ACQ;
+    out.forEach(({ i }, k) => (tags[i] = { vatCode: code, vatBase: k === 0 ? costNet : null }));
+    inp.forEach(({ i }) => (tags[i] = { vatCode: VAT.INPUT, vatBase: null }));
+    return tags;
+  } else if (!out.length && !inp.length && hasAr && revenueNet !== 0) {
+    const code = !country || country === home ? VAT.SALES_ZERO : isEU(country) ? VAT.ICP : VAT.EXPORT;
+    revenue.forEach(({ l, i }) => (tags[i] = { vatCode: code, vatBase: -l.amount }));
+  }
+  if (inp.length && costNet !== 0) inp.forEach(({ i }) => (tags[i] = { vatCode: VAT.INPUT, vatBase: null }));
+  return tags;
 }

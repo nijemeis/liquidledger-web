@@ -4,7 +4,7 @@ import { post, reverse, PostingError, type PostLine } from "@/lib/domain/ledger"
 import { checkXaf, type XafFile, type XafRelation } from "./parse";
 import { ACC } from "@/lib/domain/chart";
 import { isEU, VAT } from "@/lib/domain/vat";
-import { impliedRateBp, invoiceFromTransaction, spreadVat, type MappedLine } from "./invoices";
+import { impliedRateBp, invoiceFromTransaction, spreadVat, vatTagsFor, type MappedLine } from "./invoices";
 import { ACCOUNT_CODE, defaultIncluded, suggestMapping, type AccountTarget, type ChartAccount, type MappingRow } from "./mapping";
 
 // Takes an auditfile over into an administration: missing ledger accounts and
@@ -344,9 +344,18 @@ export async function runImport(
   // ── Transactions ──────────────────────────────────────────────────────────
   for (const j of journals) {
     for (const t of j.transactions) {
-      const lines: PostLine[] = t.lines
+      const mapped: MappedLine[] = t.lines
         .filter((l) => l.amount !== 0)
-        .map((l) => ({ account: accountOf.get(l.account)!, ...amounts(l.amount), relationId: l.relation ? (relationOf.get(l.relation) ?? null) : null, description: l.desc.slice(0, 500) || null }));
+        .map((l) => ({ account: accountOf.get(l.account)!, amount: l.amount, relationId: l.relation ? (relationOf.get(l.relation) ?? null) : null, desc: l.desc, ref: refOf(l) }));
+      // VAT codes derived from the bookings, so imported periods show up in the VAT return.
+      const tags = vatTagsFor(mapped, (c) => typeOfCode.get(c), (id) => relInfo.get(id)?.country, target.country, isEU);
+      const lines: PostLine[] = mapped.map((l, i) => ({
+        account: l.account,
+        ...amounts(l.amount),
+        relationId: l.relationId,
+        description: l.desc.slice(0, 500) || null,
+        ...(tags[i] ? { vatCode: tags[i]!.vatCode, vatBase: tags[i]!.vatBase } : {}),
+      }));
       if (lines.length < 2) {
         skipped++;
         continue;
@@ -357,9 +366,6 @@ export async function runImport(
       entries++;
       if (!withInvoices) continue;
 
-      const mapped: MappedLine[] = t.lines
-        .filter((l) => l.amount !== 0)
-        .map((l) => ({ account: accountOf.get(l.account)!, amount: l.amount, relationId: l.relation ? (relationOf.get(l.relation) ?? null) : null, desc: l.desc, ref: refOf(l) }));
       const inv = invoiceFromTransaction(mapped, (c) => typeOfCode.get(c));
       const rel = inv ? relInfo.get(inv.relationId) : undefined;
       if (!inv || !rel) continue;

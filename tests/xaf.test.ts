@@ -8,7 +8,9 @@ import { createClientWithAdministration } from "@/lib/domain/setup";
 import { balances } from "@/lib/domain/ledger";
 import { checkXaf, parseXaf, toCents, XafError } from "@/lib/xaf/parse";
 import { nextFree, suggestMapping, type AccountTarget } from "@/lib/xaf/mapping";
-import { impliedRateBp, invoiceFromTransaction, spreadVat } from "@/lib/xaf/invoices";
+import { impliedRateBp, invoiceFromTransaction, spreadVat, vatTagsFor } from "@/lib/xaf/invoices";
+import { vatTotals } from "@/lib/domain/returns";
+import { isEU } from "@/lib/domain/vat";
 import { previewImport, reverseImport, runImport, vatNumberOf, type ImportTarget } from "@/lib/xaf/import";
 import { loadXafData, renderXaf } from "@/lib/xaf/export";
 
@@ -190,6 +192,33 @@ describe("invoice recognition", () => {
     expect(invoiceFromTransaction([L("1300", 100), L("1300", 100, "r2"), L("8000", -200)], types)).toBeNull();
   });
 
+  it("derives VAT codes from what a transaction books", () => {
+    const T2: Record<string, "REVENUE" | "COST" | "ASSET" | "LIABILITY"> = { "8000": "REVENUE", "4100": "COST", "1300": "ASSET", "1600": "LIABILITY", "1301": "ASSET" };
+    const ty = (c: string) => T2[c];
+    const country = (id: string) => ({ nl: "NL", be: "BE", us: "US" })[id];
+    const tags = (ls: ReturnType<typeof L>[]) => vatTagsFor(ls, ty, country, "NL", isEU);
+    // Domestic sale at 21%: code and turnover on the VAT line.
+    expect(tags([L("1300", 12100, "nl"), L("8000", -10000, "nl"), L("1700", -2100, "nl")])).toEqual([null, null, { vatCode: "S_HIGH", vatBase: 10000 }]);
+    expect(tags([L("1300", 10900, "nl"), L("8000", -10000, "nl"), L("1700", -900, "nl")])[2]).toEqual({ vatCode: "S_LOW", vatBase: 10000 });
+    // No VAT: 0% at home, ICP to an EU customer, export outside the EU.
+    expect(tags([L("1300", 500, "be"), L("8000", -500, "be")])[1]).toEqual({ vatCode: "ICP", vatBase: 500 });
+    expect(tags([L("1300", 500, "us"), L("8000", -500, "us")])[1]).toEqual({ vatCode: "EXPORT", vatBase: 500 });
+    // Purchase: input VAT.
+    expect(tags([L("4100", 1000, "nl"), L("1810", 210, "nl"), L("1600", -1210, "nl")])[1]).toEqual({ vatCode: "INPUT", vatBase: null });
+    // Reverse charge from an EU supplier.
+    expect(tags([L("4100", 1000, "be"), L("1810", 210, "be"), L("1700", -210, "be"), L("1600", -1000, "be")]).slice(1, 3)).toEqual([
+      { vatCode: "INPUT", vatBase: null },
+      { vatCode: "EU_ACQ", vatBase: 1000 },
+    ]);
+    // A settlement with a few cents of rounding on a revenue account is still a settlement.
+    expect(tags([L("1700", 181459, null), L("1810", -140367, null), L("8000", -92, null), L("1301", -41000, null)])).toEqual([null, null, null, null]);
+    // Turnover booked on another account (prepaid sales) still counts as the VAT base.
+    expect(tags([L("1300", 12100, "nl"), L("1806", -10000, "nl"), L("1700", -2100, "nl")])[2]).toEqual({ vatCode: "S_HIGH", vatBase: 10000 });
+    // A VAT settlement or a payment gets no codes.
+    expect(tags([L("1700", 2100, null), L("1810", -210, null), L("1301", -1890, null)])).toEqual([null, null, null]);
+    expect(tags([L("1000", 12100, "nl"), L("1300", -12100, "nl")])).toEqual([null, null]);
+  });
+
   it("derives VAT rates and spreads VAT over lines", () => {
     expect(impliedRateBp(10000, 2100)).toBe(2100);
     expect(impliedRateBp(3333, 300)).toBe(900);
@@ -269,6 +298,12 @@ describe("XAF import and export", () => {
     const buy = await withTenant(A, (tx) => tx.purchaseInvoice.findFirstOrThrow({ where: { administrationId: A }, include: { lines: true } }));
     expect(buy).toMatchObject({ number: "H1", supplierName: "Bodega Ica", status: "BOOKED", netCents: 100000, vatCents: 21000, totalCents: 121000, paidCents: 0 });
     expect(buy.lines).toEqual([expect.objectContaining({ accountCode: "4101", amountCents: 100000, vatCents: 21000 })]);
+
+    // The imported period shows up in the VAT return.
+    const vat = await withTenant(A, (tx) => vatTotals(tx, A, { start: new Date("2025-01-01T00:00:00Z"), end: new Date("2025-03-31T00:00:00Z") } as never));
+    expect(vat.base.S_HIGH).toBe(10000);
+    expect(vat.vat.S_HIGH).toBe(2100);
+    expect(vat.vat.INPUT).toBe(21000);
   });
 
   it("refuses the same file twice", async () => {

@@ -30,7 +30,7 @@ export default ns({
       matched: "{n} match existing relations",
       lock: "Close the books through the last imported month afterwards",
       invoices: "Show sales and purchase invoices from the file on the Sales and Purchase invoices screens",
-      notes: "Bookings come in as journal entries (source “Imported”) on the accounts you choose below. Sales and purchase invoices in the file also appear on the Sales and Purchase invoices screens, paid or open as the file shows; open ones can be matched to bank payments later. VAT codes aren’t carried over, so imported entries don’t count towards VAT returns in Liquid Ledger — those periods were filed from your old package. Invoices that were already open at the start of the file stay balances per customer and supplier. You can reverse the whole import afterwards.",
+      notes: "Bookings come in as journal entries (source “Imported”) on the accounts you choose below. Sales and purchase invoices in the file also appear on the Sales and Purchase invoices screens, paid or open as the file shows; open ones can be matched to bank payments later. VAT codes are derived from the bookings (turnover with output VAT, costs with input VAT, sales without VAT as 0%, intra-EU or export), so imported periods appear on the VAT return — compare them with what you filed from your old package. Invoices that were already open at the start of the file stay balances per customer and supplier. You can reverse the whole import afterwards.",
     },
     map: {
       title: "Ledger accounts ({n})",
@@ -130,7 +130,7 @@ export default ns({
       matched: "{n} gekoppeld aan bestaande relaties",
       lock: "Daarna de boeken afsluiten tot en met de laatste geïmporteerde maand",
       invoices: "Verkoop- en inkoopfacturen uit het bestand tonen bij Verkoopfacturen en Inkoopfacturen",
-      notes: "Boekingen komen binnen als memoriaalboekingen (bron ‘Overgenomen’) op de rekeningen die je hieronder kiest. Verkoop- en inkoopfacturen uit het bestand verschijnen ook bij Verkoopfacturen en Inkoopfacturen, betaald of open zoals het bestand laat zien; open facturen kun je later aan bankbetalingen koppelen. Btw-codes worden niet overgenomen, dus geïmporteerde boekingen tellen niet mee in btw-aangiftes in Liquid Ledger — die periodes zijn vanuit je oude pakket aangegeven. Facturen die aan het begin van het bestand al openstonden, blijven een saldo per klant en leverancier. Je kunt de hele import achteraf terugdraaien.",
+      notes: "Boekingen komen binnen als memoriaalboekingen (bron ‘Overgenomen’) op de rekeningen die je hieronder kiest. Verkoop- en inkoopfacturen uit het bestand verschijnen ook bij Verkoopfacturen en Inkoopfacturen, betaald of open zoals het bestand laat zien; open facturen kun je later aan bankbetalingen koppelen. Btw-codes worden afgeleid uit de boekingen (omzet met af te dragen btw, kosten met voorbelasting, verkopen zonder btw als 0%, intracommunautair of export), zodat geïmporteerde periodes in de btw-aangifte verschijnen — vergelijk ze met wat je vanuit je oude pakket hebt aangegeven. Facturen die aan het begin van het bestand al openstonden, blijven een saldo per klant en leverancier. Je kunt de hele import achteraf terugdraaien.",
     },
     map: {
       title: "Grootboekrekeningen ({n})",
@@ -230,7 +230,7 @@ export default ns({
       matched: "{n} correspondent à des relations existantes",
       lock: "Clôturer ensuite les comptes jusqu’au dernier mois importé inclus",
       invoices: "Afficher les factures de vente et d’achat du fichier dans les écrans Factures de vente et Factures d’achat",
-      notes: "Les écritures arrivent sous forme d’écritures de journal (source « Importé ») sur les comptes que vous choisissez ci-dessous. Les factures de vente et d’achat du fichier apparaissent aussi dans les écrans Factures de vente et Factures d’achat, payées ou ouvertes selon le fichier ; les factures ouvertes pourront ensuite être rapprochées des paiements bancaires. Les codes TVA ne sont pas repris : les écritures importées ne comptent donc pas dans les déclarations de TVA de Liquid Ledger — ces périodes ont été déclarées depuis votre ancien logiciel. Les factures déjà ouvertes au début du fichier restent des soldes par client et fournisseur. Vous pouvez contrepasser l’import complet par la suite.",
+      notes: "Les écritures arrivent sous forme d’écritures de journal (source « Importé ») sur les comptes que vous choisissez ci-dessous. Les factures de vente et d’achat du fichier apparaissent aussi dans les écrans Factures de vente et Factures d’achat, payées ou ouvertes selon le fichier ; les factures ouvertes pourront ensuite être rapprochées des paiements bancaires. Les codes TVA sont déduits des écritures (chiffre d’affaires avec TVA collectée, charges avec TVA déductible, ventes sans TVA à 0 %, intracommunautaires ou à l’export) : les périodes importées apparaissent donc dans la déclaration de TVA — comparez-les avec ce que vous avez déclaré depuis votre ancien logiciel. Les factures déjà ouvertes au début du fichier restent des soldes par client et fournisseur. Vous pouvez contrepasser l’import complet par la suite.",
     },
     map: {
       title: "Comptes généraux ({n})",
@@ -330,7 +330,7 @@ export default ns({
       matched: "{n} vorhandenen Kontakten zugeordnet",
       lock: "Anschließend die Bücher bis einschließlich des letzten importierten Monats abschließen",
       invoices: "Verkaufs- und Einkaufsrechnungen aus der Datei unter Ausgangs- und Eingangsrechnungen anzeigen",
-      notes: "Die Buchungen werden als Buchungssätze (Quelle „Übernommen“) auf den unten gewählten Konten erfasst. Verkaufs- und Einkaufsrechnungen aus der Datei erscheinen außerdem unter Ausgangs- und Eingangsrechnungen, bezahlt oder offen wie in der Datei; offene Rechnungen können Sie später Bankzahlungen zuordnen. Steuerschlüssel werden nicht übernommen, daher zählen importierte Buchungen in Liquid Ledger nicht für USt-Voranmeldungen — diese Zeiträume wurden aus Ihrer bisherigen Software gemeldet. Rechnungen, die zu Beginn der Datei bereits offen waren, bleiben Salden je Kunde und Lieferant. Sie können den gesamten Import später stornieren.",
+      notes: "Die Buchungen werden als Buchungssätze (Quelle „Übernommen“) auf den unten gewählten Konten erfasst. Verkaufs- und Einkaufsrechnungen aus der Datei erscheinen außerdem unter Ausgangs- und Eingangsrechnungen, bezahlt oder offen wie in der Datei; offene Rechnungen können Sie später Bankzahlungen zuordnen. Steuerschlüssel werden aus den Buchungen abgeleitet (Umsatz mit Umsatzsteuer, Kosten mit Vorsteuer, Verkäufe ohne Steuer als 0 %, innergemeinschaftlich oder Export), sodass importierte Zeiträume in der USt-Voranmeldung erscheinen — vergleichen Sie sie mit dem, was Sie aus Ihrer bisherigen Software gemeldet haben. Rechnungen, die zu Beginn der Datei bereits offen waren, bleiben Salden je Kunde und Lieferant. Sie können den gesamten Import später stornieren.",
     },
     map: {
       title: "Sachkonten ({n})",
@@ -430,7 +430,7 @@ export default ns({
       matched: "{n} abbinate ad anagrafiche esistenti",
       lock: "Poi chiudi la contabilità fino all’ultimo mese importato incluso",
       invoices: "Mostra le fatture di vendita e di acquisto del file nelle schermate Fatture di vendita e Fatture di acquisto",
-      notes: "Le registrazioni arrivano come scritture contabili (origine “Importato”) sui conti che scegli qui sotto. Le fatture di vendita e di acquisto del file compaiono anche nelle schermate Fatture di vendita e Fatture di acquisto, pagate o aperte come indica il file; quelle aperte potrai abbinarle in seguito ai pagamenti bancari. I codici IVA non vengono riportati, quindi le scritture importate non rientrano nelle dichiarazioni IVA in Liquid Ledger — quei periodi sono stati dichiarati dal tuo vecchio software. Le fatture già aperte all’inizio del file restano saldi per cliente e fornitore. Puoi stornare l’intera importazione in seguito.",
+      notes: "Le registrazioni arrivano come scritture contabili (origine “Importato”) sui conti che scegli qui sotto. Le fatture di vendita e di acquisto del file compaiono anche nelle schermate Fatture di vendita e Fatture di acquisto, pagate o aperte come indica il file; quelle aperte potrai abbinarle in seguito ai pagamenti bancari. I codici IVA vengono ricavati dalle registrazioni (ricavi con IVA a debito, costi con IVA detraibile, vendite senza IVA come 0%, intracomunitarie o export), così i periodi importati compaiono nella dichiarazione IVA — confrontali con quanto hai dichiarato dal tuo vecchio software. Le fatture già aperte all’inizio del file restano saldi per cliente e fornitore. Puoi stornare l’intera importazione in seguito.",
     },
     map: {
       title: "Conti di contabilità ({n})",
@@ -530,7 +530,7 @@ export default ns({
       matched: "{n} coinciden con contactos existentes",
       lock: "Después, cerrar la contabilidad hasta el último mes importado inclusive",
       invoices: "Mostrar las facturas de venta y de compra del archivo en las pantallas Facturas de venta y Facturas de compra",
-      notes: "Los movimientos entran como asientos contables (origen “Importado”) en las cuentas que elijas abajo. Las facturas de venta y de compra del archivo también aparecen en las pantallas Facturas de venta y Facturas de compra, pagadas o pendientes según el archivo; las pendientes podrás vincularlas después a pagos bancarios. Los códigos de IVA no se trasladan, así que los asientos importados no cuentan para las declaraciones de IVA en Liquid Ledger — esos periodos se declararon desde tu antiguo programa. Las facturas que ya estaban pendientes al inicio del archivo quedan como saldos por cliente y proveedor. Puedes anular toda la importación después.",
+      notes: "Los movimientos entran como asientos contables (origen “Importado”) en las cuentas que elijas abajo. Las facturas de venta y de compra del archivo también aparecen en las pantallas Facturas de venta y Facturas de compra, pagadas o pendientes según el archivo; las pendientes podrás vincularlas después a pagos bancarios. Los códigos de IVA se deducen de los asientos (ventas con IVA repercutido, gastos con IVA soportado, ventas sin IVA como 0 %, intracomunitarias o exportación), así que los periodos importados aparecen en la declaración de IVA — compáralos con lo que declaraste desde tu antiguo programa. Las facturas que ya estaban pendientes al inicio del archivo quedan como saldos por cliente y proveedor. Puedes anular toda la importación después.",
     },
     map: {
       title: "Cuentas contables ({n})",
@@ -630,7 +630,7 @@ export default ns({
       matched: "Dopasowano do istniejących kontrahentów: {n}",
       lock: "Następnie zamknij księgi do ostatniego zaimportowanego miesiąca włącznie",
       invoices: "Pokaż faktury sprzedaży i zakupu z pliku na ekranach Faktury sprzedaży i Faktury zakupu",
-      notes: "Księgowania trafiają jako polecenia księgowania (źródło „Zaimportowane”) na konta wybrane poniżej. Faktury sprzedaży i zakupu z pliku pojawiają się też na ekranach Faktury sprzedaży i Faktury zakupu, jako opłacone lub otwarte zgodnie z plikiem; otwarte możesz później dopasować do płatności bankowych. Kody VAT nie są przenoszone, więc zaimportowane księgowania nie wliczają się do deklaracji VAT w Liquid Ledger — za te okresy deklaracje złożono z poprzedniego programu. Faktury otwarte już na początku pliku pozostają saldami według klienta i dostawcy. Cały import możesz później wystornować.",
+      notes: "Księgowania trafiają jako polecenia księgowania (źródło „Zaimportowane”) na konta wybrane poniżej. Faktury sprzedaży i zakupu z pliku pojawiają się też na ekranach Faktury sprzedaży i Faktury zakupu, jako opłacone lub otwarte zgodnie z plikiem; otwarte możesz później dopasować do płatności bankowych. Kody VAT są wyprowadzane z księgowań (sprzedaż z VAT należnym, koszty z VAT naliczonym, sprzedaż bez VAT jako 0%, wewnątrzwspólnotowa lub eksport), więc zaimportowane okresy pojawiają się w deklaracji VAT — porównaj je z tym, co złożono z poprzedniego programu. Faktury otwarte już na początku pliku pozostają saldami według klienta i dostawcy. Cały import możesz później wystornować.",
     },
     map: {
       title: "Konta księgowe ({n})",
