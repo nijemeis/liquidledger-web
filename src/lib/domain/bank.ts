@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
-import { XMLParser } from "fast-xml-parser";
 import type { BankTransaction } from "@prisma/client";
 import type { Tx } from "./types";
 import { ACC, accountName } from "./chart";
-import { post, PostingError } from "./ledger";
+import { balances, post, PostingError } from "./ledger";
 import { registerPurchasePayment } from "./purchases";
 import { registerSalesPayment } from "./sales";
 import { STANDARD_RATE, VAT } from "./vat";
+import { compactIban, isValidIban, parseCamt053Statements, parseCsvRows, type ParsedTx } from "./statements";
+
+export { compactIban, isValidIban, type ParsedTx };
 
 // Bank reconciliation (DOMAIN_AND_DATA.md §8). Matching runs in this order:
 //  1. exact amount + reference to an open invoice
@@ -253,15 +255,6 @@ export async function reconcile(tx: Tx, input: { administrationId: string; txId:
 
 // ── Statement import ────────────────────────────────────────────────────────
 
-export interface ParsedTx {
-  date: Date;
-  amountCents: number;
-  counterparty: string;
-  counterpartyIban?: string;
-  description: string;
-  ref?: string;
-}
-
 export function importHash(t: ParsedTx): string {
   return createHash("sha256")
     .update([t.date.toISOString().slice(0, 10), t.amountCents, t.counterparty, t.description, t.ref ?? ""].join("|"))
@@ -269,96 +262,14 @@ export function importHash(t: ParsedTx): string {
     .slice(0, 40);
 }
 
-/** ISO 20022 CAMT.053 bank statement (exported by ING, Rabobank, ABN AMRO, …). */
+/** All transactions of a CAMT.053 file, with the first account's IBAN and currency. */
 export function parseCamt053(xml: string): { iban?: string; currency?: string; txs: ParsedTx[] } {
-  const parser = new XMLParser({ ignoreAttributes: false, removeNSPrefix: true, isArray: (name) => ["Stmt", "Ntry", "NtryDtls", "TxDtls", "Ustrd"].includes(name) });
-  const doc = parser.parse(xml);
-  const stmts = doc?.Document?.BkToCstmrStmt?.Stmt ?? [];
-  const txs: ParsedTx[] = [];
-  let iban: string | undefined;
-  let currency: string | undefined;
-  for (const st of stmts) {
-    iban ??= st?.Acct?.Id?.IBAN;
-    currency ??= st?.Acct?.Ccy;
-    for (const n of st.Ntry ?? []) {
-      const amt = n.Amt;
-      const value = typeof amt === "object" ? Number(amt["#text"]) : Number(amt);
-      const sign = n.CdtDbtInd === "DBIT" ? -1 : 1;
-      const date = new Date((n.BookgDt?.Dt ?? n.ValDt?.Dt ?? n.BookgDt?.DtTm ?? "").slice(0, 10) + "T00:00:00Z");
-      const det = n.NtryDtls?.[0]?.TxDtls?.[0];
-      const parties = det?.RltdPties ?? {};
-      const cp = sign > 0 ? parties.Dbtr : parties.Cdtr;
-      const cpAcct = sign > 0 ? parties.DbtrAcct : parties.CdtrAcct;
-      const ustrd = det?.RmtInf?.Ustrd?.join(" ") ?? n.AddtlNtryInf ?? "";
-      const strd = det?.RmtInf?.Strd?.CdtrRefInf?.Ref;
-      txs.push({
-        date,
-        amountCents: Math.round(value * 100) * sign,
-        counterparty: String(cp?.Nm ?? cp?.Pty?.Nm ?? n.AddtlNtryInf ?? "Unknown").slice(0, 140),
-        counterpartyIban: cpAcct?.Id?.IBAN,
-        description: String(strd ? `${strd} ${ustrd}` : ustrd || "—").trim().slice(0, 300),
-        ref: det?.Refs?.EndToEndId ?? n.AcctSvcrRef,
-      });
-    }
-  }
-  return { iban, currency, txs };
+  const st = parseCamt053Statements(xml);
+  return { iban: st[0]?.iban, currency: st[0]?.currency, txs: st.flatMap((x) => x.txs) };
 }
 
-/**
- * Simple CSV: date, amount, counterparty, description[, iban]. Accepts
- * comma or semicolon separators and either decimal mark.
- */
-export function parseCsv(text: string): ParsedTx[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  if (!lines.length) return [];
-  const sep = (lines[0]!.match(/;/g)?.length ?? 0) > (lines[0]!.match(/,/g)?.length ?? 0) ? ";" : ",";
-  const split = (l: string) => {
-    const out: string[] = [];
-    let cur = "";
-    let q = false;
-    for (const ch of l) {
-      if (ch === '"') q = !q;
-      else if (ch === sep && !q) {
-        out.push(cur);
-        cur = "";
-      } else cur += ch;
-    }
-    out.push(cur);
-    return out.map((s) => s.trim());
-  };
-  const header = split(lines[0]!).map((h) => h.toLowerCase());
-  const hasHeader = header.some((h) => /date|datum|amount|bedrag/.test(h));
-  const idx = (re: RegExp, fallback: number) => {
-    const i = header.findIndex((h) => re.test(h));
-    return hasHeader && i >= 0 ? i : fallback;
-  };
-  const iDate = idx(/date|datum/, 0);
-  const iAmt = idx(/amount|bedrag/, 1);
-  const iName = idx(/name|naam|counterparty|tegenpartij/, 2);
-  const iDesc = idx(/desc|omschrijving|mededeling/, 3);
-  const iIban = idx(/iban|tegenrekening/, 4);
-  const rows = hasHeader ? lines.slice(1) : lines;
-  const out: ParsedTx[] = [];
-  for (const l of rows) {
-    const c = split(l);
-    const rawDate = c[iDate] ?? "";
-    const d = /^\d{8}$/.test(rawDate)
-      ? new Date(`${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}T00:00:00Z`)
-      : /^\d{1,2}[-/.]\d{1,2}[-/.]\d{4}$/.test(rawDate)
-        ? (() => {
-            const [dd, mm, yy] = rawDate.split(/[-/.]/);
-            return new Date(`${yy}-${mm!.padStart(2, "0")}-${dd!.padStart(2, "0")}T00:00:00Z`);
-          })()
-        : new Date(rawDate.slice(0, 10) + "T00:00:00Z");
-    let a = (c[iAmt] ?? "").replace(/[€\s]/g, "");
-    if (a.lastIndexOf(",") > a.lastIndexOf(".")) a = a.replace(/\./g, "").replace(",", ".");
-    else a = a.replace(/,/g, "");
-    const amount = Math.round(Number(a) * 100);
-    if (Number.isNaN(d.getTime()) || !Number.isFinite(amount)) continue;
-    out.push({ date: d, amountCents: amount, counterparty: (c[iName] || "Unknown").slice(0, 140), description: (c[iDesc] || "—").slice(0, 300), counterpartyIban: c[iIban] || undefined });
-  }
-  return out;
-}
+/** Simple CSV: date, amount, counterparty, description[, iban]. */
+export const parseCsv = parseCsvRows;
 
 export async function importTransactions(tx: Tx, input: { administrationId: string; bankAccountId: string; txs: ParsedTx[] }) {
   let added = 0;
@@ -383,6 +294,85 @@ export async function importTransactions(tx: Tx, input: { administrationId: stri
   return { added, skipped: input.txs.length - added };
 }
 
+/**
+ * Create a bank account (and its ledger account when asked). The opening
+ * balance is booked against equity only when the ledger account doesn't carry
+ * money yet — after an auditfile import it already holds the bank balance.
+ */
+export async function createBankAccount(
+  tx: Tx,
+  input: {
+    administrationId: string;
+    baseCurrency: string;
+    name: string;
+    iban: string | null;
+    currency: string;
+    accountCode: string;
+    createLedger: boolean;
+    ledgerName?: string;
+    opening?: { cents: number; date: Date } | null;
+    provider?: string;
+    userId?: string | null;
+  },
+) {
+  const A = input.administrationId;
+  const others = await tx.bankAccount.findMany({ where: { administrationId: A, archivedAt: null }, select: { accountCode: true } });
+  if (input.createLedger) {
+    const nm = input.ledgerName || input.name;
+    await tx.ledgerAccount.create({ data: { administrationId: A, code: input.accountCode, nameNl: nm, nameEn: nm, type: "ASSET" } });
+  }
+  const opening = input.opening?.cents ?? 0;
+  const acct = await tx.bankAccount.create({
+    data: {
+      administrationId: A,
+      name: input.name,
+      iban: input.iban ? compactIban(input.iban).replace(/(.{4})/g, "$1 ").trim() : null,
+      currency: input.currency.toUpperCase(),
+      accountCode: input.accountCode,
+      provider: input.provider ?? "manual",
+      openingBalanceCents: opening,
+    },
+  });
+  let bookedOpening = false;
+  if (opening && acct.currency === input.baseCurrency) {
+    const shared = others.some((b) => b.accountCode === input.accountCode);
+    const bal = (await balances(tx, A)).get(input.accountCode) ?? 0;
+    if (!shared && bal === 0) {
+      const now = new Date();
+      await post(tx, {
+        administrationId: A,
+        date: input.opening?.date ?? new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())),
+        title: `Opening balance · ${acct.name}`,
+        source: "OPENING",
+        sourceId: acct.id,
+        createdById: input.userId ?? null,
+        lines:
+          opening > 0
+            ? [{ account: input.accountCode, debit: opening }, { account: ACC.equity, credit: opening }]
+            : [{ account: ACC.equity, debit: -opening }, { account: input.accountCode, credit: -opening }],
+      });
+      bookedOpening = true;
+    }
+  }
+  return { account: acct, bookedOpening };
+}
+
+/** Ledger account for a new bank account: 1000 while no bank account uses it, else the next free 10xx code. */
+export async function bankLedgerFor(tx: Tx, administrationId: string): Promise<{ code: string; exists: boolean }> {
+  const [used, ledger] = await Promise.all([
+    tx.bankAccount.findMany({ where: { administrationId, archivedAt: null }, select: { accountCode: true } }),
+    tx.ledgerAccount.findMany({ where: { administrationId, code: { startsWith: "10" } }, select: { code: true } }),
+  ]);
+  const taken = new Set(used.map((u) => u.accountCode));
+  const exists = new Set(ledger.map((l) => l.code));
+  if (!taken.has(ACC.bank)) return { code: ACC.bank, exists: exists.has(ACC.bank) };
+  for (let c = 1001; c <= 1099; c++) {
+    const code = String(c);
+    if (!taken.has(code) && !exists.has(code)) return { code, exists: false };
+  }
+  throw new PostingError("No free ledger account code between 1000 and 1099 for a new bank account.");
+}
+
 /** Statement balance: opening balance plus every imported line. */
 export async function accountBalances(tx: Tx, administrationId: string) {
   const accounts = await tx.bankAccount.findMany({ where: { administrationId, archivedAt: null }, orderBy: { createdAt: "asc" } });
@@ -396,21 +386,6 @@ export async function accountBalances(tx: Tx, administrationId: string) {
 }
 
 // ── IBAN & SEPA ──────────────────────────────────────────────────────────────
-
-export const compactIban = (iban: string) => iban.replace(/\s+/g, "").toUpperCase();
-
-/** ISO 13616 check (mod 97). */
-export function isValidIban(iban: string): boolean {
-  const s = compactIban(iban);
-  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(s)) return false;
-  const moved = s.slice(4) + s.slice(0, 4);
-  let rem = 0;
-  for (const ch of moved) {
-    const v = /\d/.test(ch) ? ch : String(ch.charCodeAt(0) - 55);
-    for (const d of v) rem = (rem * 10 + Number(d)) % 97;
-  }
-  return rem === 1;
-}
 
 export interface SepaPayment {
   endToEndId: string; // e.g. the supplier's invoice number

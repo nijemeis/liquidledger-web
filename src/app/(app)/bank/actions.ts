@@ -8,16 +8,17 @@ import {
   compactIban,
   importTransactions,
   isValidIban,
-  parseCamt053,
-  parseCsv,
+  bankLedgerFor,
+  createBankAccount,
   reconcile,
   sepaCandidates,
   suggestionsFor,
   type ReconcileChoice,
 } from "@/lib/domain/bank";
-import { accountName, ACC } from "@/lib/domain/chart";
-import { balances, post, PostingError } from "@/lib/domain/ledger";
+import { accountName } from "@/lib/domain/chart";
+import { PostingError } from "@/lib/domain/ledger";
 import { parseMoney } from "@/lib/format";
+import { bankAccountName, parseStatement, StatementError } from "@/lib/domain/statements";
 
 const REVALIDATE = { revalidate: ["/", "layout"] };
 
@@ -175,43 +176,85 @@ export async function acceptAll(bankAccountId: string) {
 
 const MAX_FILE = 5 * 1024 * 1024;
 
-/** Import a CAMT.053 (XML) or CSV statement into a bank account. */
+/**
+ * Import a bank statement (CAMT.053, MT940, ABN AMRO TXT or CSV). With
+ * accountId "auto" the account is found by the IBAN in the file — and created,
+ * with its ledger account and the statement's opening balance, when it doesn't
+ * exist yet. A file with several accounts is split over them.
+ */
 export async function importStatement(form: FormData) {
   return appAction(
     "bank",
     async (ctx, tx) => {
-      const { t } = await getI18n(ctx.locale);
+      const { t, fmt } = await getI18n(ctx.locale);
       const A = ctx.administration.id;
-      const accountId = String(form.get("accountId") ?? "");
+      const accountId = String(form.get("accountId") ?? "auto");
       const file = form.get("file");
       if (!(file instanceof File) || !file.size) throw new PostingError(t("bank.import.noFile"));
       if (file.size > MAX_FILE) throw new PostingError(t("bank.import.tooBig"));
-      const account = await tx.bankAccount.findFirst({ where: { id: accountId, administrationId: A, archivedAt: null } });
-      if (!account) throw new PostingError(t("bank.import.pickAccount"));
-      const text = (await file.text()).replace(/^﻿/, "");
-      let txs;
-      if (text.trimStart().startsWith("<")) {
-        let parsed;
-        try {
-          parsed = parseCamt053(text);
-        } catch {
-          throw new PostingError(t("bank.import.badXml"));
-        }
-        if (parsed.iban && account.iban && compactIban(parsed.iban) !== compactIban(account.iban)) {
-          throw new PostingError(t("bank.import.ibanMismatch", { iban: parsed.iban, name: account.name }));
-        }
-        if (parsed.currency && parsed.currency !== account.currency) {
-          throw new PostingError(t("bank.import.currencyMismatch", { currency: parsed.currency, name: account.name }));
-        }
-        txs = parsed.txs;
-      } else {
-        txs = parseCsv(text);
+      const buf = new Uint8Array(await file.arrayBuffer());
+      // Statement files are UTF-8, but older MT940/TXT exports are Windows-1252.
+      let text = new TextDecoder("utf-8").decode(buf);
+      if (text.includes("\uFFFD")) text = new TextDecoder("windows-1252").decode(buf);
+      let parsed: ReturnType<typeof parseStatement>;
+      try {
+        parsed = parseStatement(text);
+      } catch (e) {
+        if (e instanceof StatementError) throw new PostingError(t("bank.import.badFile"));
+        throw e;
       }
-      txs = txs.filter((x) => x.amountCents !== 0);
-      if (!txs.length) throw new PostingError(t("bank.import.empty"));
-      const res = await importTransactions(tx, { administrationId: A, bankAccountId: account.id, txs });
-      await auditApp(ctx, "bank.import", `Imported ${file.name} into ${account.name}: ${res.added} new, ${res.skipped} duplicates`, { targetType: "bank_account", targetId: account.id }, tx);
-      return { message: t("bank.toast.imported", { n: res.added, m: res.skipped }) };
+      const statements = parsed.statements.map((s) => ({ ...s, txs: s.txs.filter((x) => x.amountCents !== 0 && !Number.isNaN(x.date.getTime())) })).filter((s) => s.txs.length);
+      if (!statements.length) throw new PostingError(t("bank.import.empty"));
+
+      const accounts = await tx.bankAccount.findMany({ where: { administrationId: A, archivedAt: null } });
+      const chosen = accountId !== "auto" ? accounts.find((a) => a.id === accountId) : undefined;
+      if (accountId !== "auto" && !chosen) throw new PostingError(t("bank.import.pickAccount"));
+      if (chosen && statements.length > 1) throw new PostingError(t("bank.import.severalAccounts", { n: statements.length }));
+
+      let added = 0;
+      let skipped = 0;
+      const created: string[] = [];
+      let lastAccountId: string | null = null;
+      for (const st of statements) {
+        let account = chosen;
+        if (account) {
+          if (st.iban && account.iban && compactIban(st.iban) !== compactIban(account.iban)) throw new PostingError(t("bank.import.ibanMismatch", { iban: st.iban, name: account.name }));
+          if (st.currency && st.currency !== account.currency) throw new PostingError(t("bank.import.currencyMismatch", { currency: st.currency, name: account.name }));
+        } else {
+          if (!st.iban) throw new PostingError(t("bank.import.noIban"));
+          account = accounts.find((a) => a.iban && compactIban(a.iban) === compactIban(st.iban!));
+          if (!account) {
+            const ledger = await bankLedgerFor(tx, A);
+            const name = bankAccountName(st.iban, accounts.map((a) => a.name));
+            const res = await createBankAccount(tx, {
+              administrationId: A,
+              baseCurrency: ctx.administration.baseCurrency,
+              name,
+              iban: st.iban,
+              currency: st.currency ?? ctx.administration.baseCurrency,
+              accountCode: ledger.code,
+              createLedger: !ledger.exists,
+              ledgerName: `Bank ${bankAccountName(st.iban, [bankAccountName(st.iban)])}`,
+              opening: st.opening ?? null,
+              provider: parsed.format,
+              userId: ctx.userId,
+            });
+            account = res.account;
+            accounts.push(account);
+            created.push(
+              t("bank.toast.autoCreated", { name, code: ledger.code }) +
+                (res.bookedOpening && st.opening ? " · " + t("bank.toast.openingBooked", { amount: fmt.money(st.opening.cents, { currency: account.currency }) }) : ""),
+            );
+            await auditApp(ctx, "bank.account_create", `Added bank account ${name} (${st.iban}) on ${ledger.code} from statement ${file.name}`, { targetType: "bank_account", targetId: account.id }, tx);
+          }
+        }
+        const res = await importTransactions(tx, { administrationId: A, bankAccountId: account.id, txs: st.txs });
+        added += res.added;
+        skipped += res.skipped;
+        lastAccountId = account.id;
+        await auditApp(ctx, "bank.import", `Imported ${file.name} (${parsed.format}) into ${account.name}: ${res.added} new, ${res.skipped} duplicates`, { targetType: "bank_account", targetId: account.id }, tx);
+      }
+      return { message: [...created, t("bank.toast.imported", { n: added, m: skipped })].join(" · "), accountId: created.length || statements.length === 1 ? lastAccountId : null };
     },
     REVALIDATE,
   );
@@ -246,48 +289,21 @@ export async function addBankAccount(input: z.input<typeof accountSchema>) {
       const existing = await tx.bankAccount.findMany({ where: { administrationId: A, archivedAt: null } });
       if (iban && existing.some((b) => b.iban && compactIban(b.iban) === iban)) throw new PostingError(t("bank.add.dupIban"));
       const ledger = await tx.ledgerAccount.findFirst({ where: { administrationId: A, code: v.accountCode } });
-      let createdLedger = false;
-      if (v.mode === "new") {
-        if (ledger) throw new PostingError(t("bank.add.codeTaken", { code: v.accountCode }));
-        const nm = v.ledgerName || v.name;
-        await tx.ledgerAccount.create({ data: { administrationId: A, code: v.accountCode, nameNl: nm, nameEn: nm, type: "ASSET" } });
-        createdLedger = true;
-      } else if (!ledger) {
-        throw new PostingError(t("bank.add.codeMissing", { code: v.accountCode }));
-      }
-      const acct = await tx.bankAccount.create({
-        data: {
-          administrationId: A,
-          name: v.name,
-          iban: iban ? iban.replace(/(.{4})/g, "$1 ").trim() : null,
-          currency: v.currency.toUpperCase(),
-          accountCode: v.accountCode,
-          provider: "manual",
-          openingBalanceCents: opening,
-        },
+      if (v.mode === "new" && ledger) throw new PostingError(t("bank.add.codeTaken", { code: v.accountCode }));
+      if (v.mode === "existing" && !ledger) throw new PostingError(t("bank.add.codeMissing", { code: v.accountCode }));
+      const createdLedger = v.mode === "new";
+      const { account: acct, bookedOpening } = await createBankAccount(tx, {
+        administrationId: A,
+        baseCurrency: ctx.administration.baseCurrency,
+        name: v.name,
+        iban,
+        currency: v.currency,
+        accountCode: v.accountCode,
+        createLedger: createdLedger,
+        ledgerName: v.ledgerName || v.name,
+        opening: opening ? { cents: opening, date: new Date(Date.UTC(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) } : null,
+        userId: ctx.userId,
       });
-      // Book the opening balance against equity when the ledger account isn't carrying money yet.
-      let bookedOpening = false;
-      if (opening && acct.currency === ctx.administration.baseCurrency) {
-        const shared = existing.some((b) => b.accountCode === v.accountCode);
-        const bal = (await balances(tx, A)).get(v.accountCode) ?? 0;
-        if (!shared && bal === 0) {
-          const now = new Date();
-          await post(tx, {
-            administrationId: A,
-            date: new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())),
-            title: `Opening balance · ${acct.name}`,
-            source: "OPENING",
-            sourceId: acct.id,
-            createdById: ctx.userId,
-            lines:
-              opening > 0
-                ? [{ account: v.accountCode, debit: opening }, { account: ACC.equity, credit: opening }]
-                : [{ account: ACC.equity, debit: -opening }, { account: v.accountCode, credit: -opening }],
-          });
-          bookedOpening = true;
-        }
-      }
       await auditApp(ctx, "bank.account_create", `Added bank account ${acct.name}${iban ? ` (${iban})` : ""} on ${v.accountCode}`, { targetType: "bank_account", targetId: acct.id }, tx);
       let message = t("bank.toast.accountAdded", { name: acct.name, code: v.accountCode });
       if (createdLedger) message += " · " + t("bank.toast.ledgerCreated", { code: v.accountCode });

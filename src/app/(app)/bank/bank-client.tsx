@@ -319,12 +319,10 @@ export function BankActions({ accounts, selectedId, suggestCount, reconcilable, 
   const [accept, accepting] = useAction(acceptAll);
   return (
     <>
-      {accounts.length ? (
-        <button className="btn" onClick={() => setOpen("import")}>
-          <Icon name="UploadSimple" size={16} />
-          {t("bank.importStatement")}
-        </button>
-      ) : null}
+      <button className="btn" onClick={() => setOpen("import")}>
+        <Icon name="UploadSimple" size={16} />
+        {t("bank.importStatement")}
+      </button>
       <button className="btn" onClick={() => setOpen("add")}>
         <Icon name="Plus" size={16} />
         {t("bank.addAccount")}
@@ -350,11 +348,19 @@ export function BankActions({ accounts, selectedId, suggestCount, reconcilable, 
 
 function ImportModal({ accounts, selectedId, onClose }: { accounts: AccountOpt[]; selectedId: string | null; onClose: () => void }) {
   const { t } = useI18n();
-  const [accountId, setAccountId] = useState(selectedId ?? accounts[0]?.id ?? "");
+  const router = useRouter();
+  // "auto": the account is found — or created — from the IBAN in the file.
+  const [accountId, setAccountId] = useState("auto");
   const [file, setFile] = useState<File | null>(null);
   const [drag, setDrag] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const [run, pending] = useAction(importStatement, { onDone: (r) => r.ok && onClose() });
+  const [run, pending] = useAction(importStatement, {
+    onDone: (r) => {
+      if (!r.ok) return;
+      onClose();
+      if (typeof r.accountId === "string" && r.accountId !== selectedId) router.push(`/bank?account=${r.accountId}`);
+    },
+  });
   const submit = () => {
     if (!file) return;
     const fd = new FormData();
@@ -381,6 +387,7 @@ function ImportModal({ accounts, selectedId, onClose }: { accounts: AccountOpt[]
       <label className="field">
         <span className="field-label">{t("bank.import.account")}</span>
         <select className="select" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          <option value="auto">{t("bank.import.auto")}</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name} {a.iban ? `· ${a.iban}` : ""} · {a.currency}
@@ -410,7 +417,7 @@ function ImportModal({ accounts, selectedId, onClose }: { accounts: AccountOpt[]
           <div className="truncate" style={{ fontWeight: 600 }}>{file ? file.name : t("bank.import.drop")}</div>
           <div style={{ fontSize: 13, color: "#5b6474" }}>{t("bank.import.formats")}</div>
         </div>
-        <input ref={input} type="file" accept=".xml,.csv,.txt,application/xml,text/xml,text/csv" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input ref={input} type="file" accept=".xml,.csv,.txt,.tab,.sta,.940,.mt940,application/xml,text/xml,text/csv,text/plain" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       </div>
       <div style={{ fontSize: 12.5, color: "#5b6474" }}>{t("bank.import.csvHint")}</div>
     </Modal>
