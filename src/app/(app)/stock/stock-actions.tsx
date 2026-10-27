@@ -5,7 +5,7 @@ import type { WarehouseKind } from "@prisma/client";
 import { Modal, useAction } from "@/components/client";
 import { Icon } from "@/components/icon";
 import { useI18n } from "@/i18n/client";
-import { addWarehouse, countStockAction, moveStock, sampleStock } from "./actions";
+import { addWarehouse, countStockAction, moveStock, removeWarehouse, sampleStock, updateWarehouse } from "./actions";
 
 export interface StockProduct {
   id: string;
@@ -18,21 +18,30 @@ export interface StockWarehouse {
   id: string;
   name: string;
   kind: WarehouseKind;
+  city?: string | null;
+  exciseWarehouseNo?: string | null;
 }
 
 type Props = { products: StockProduct[]; warehouses: StockWarehouse[]; levels: Record<string, Record<string, number>>; selectedId: string | null; money: boolean };
-type Open = null | "move" | "sample" | "count" | "warehouse";
+type Open = null | "move" | "sample" | "count" | "warehouse" | "edit";
 
 export function StockActions(props: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState<Open>(null);
   const close = () => setOpen(null);
+  const current = props.warehouses.find((w) => w.id === props.selectedId);
   return (
     <>
       <button className="btn" onClick={() => setOpen("warehouse")}>
         <Icon name="Warehouse" size={16} />
         {t("stock.actions.addWarehouse")}
       </button>
+      {current ? (
+        <button className="btn" onClick={() => setOpen("edit")}>
+          <Icon name="PencilSimple" size={16} />
+          {t("stock.actions.editWarehouse")}
+        </button>
+      ) : null}
       <button className="btn" onClick={() => setOpen("count")} disabled={!props.warehouses.length}>
         <Icon name="ListChecks" size={16} />
         {t("stock.actions.count")}
@@ -49,6 +58,7 @@ export function StockActions(props: Props) {
       {open === "sample" ? <SampleModal {...props} onClose={close} /> : null}
       {open === "count" ? <CountModal {...props} onClose={close} /> : null}
       {open === "warehouse" ? <WarehouseModal onClose={close} /> : null}
+      {open === "edit" && current ? <WarehouseModal onClose={close} edit={current} /> : null}
     </>
   );
 }
@@ -316,10 +326,11 @@ function CountModal({ products, warehouses, levels, selectedId, money, onClose }
   );
 }
 
-function WarehouseModal({ onClose }: { onClose: () => void }) {
+/** Add a warehouse, or edit/remove one (`edit`). */
+function WarehouseModal({ onClose, edit }: { onClose: () => void; edit?: StockWarehouse }) {
   const { t } = useI18n();
   const router = useRouter();
-  const [kind, setKind] = useState<WarehouseKind>("BONDED");
+  const [kind, setKind] = useState<WarehouseKind>(edit?.kind ?? "BONDED");
   const [run, pending] = useAction(addWarehouse, {
     onDone: (r) => {
       if (r.ok) {
@@ -328,20 +339,35 @@ function WarehouseModal({ onClose }: { onClose: () => void }) {
       }
     },
   });
+  const [save, saving] = useAction(updateWarehouse, { onDone: (r) => r.ok && onClose() });
+  const [remove, removing] = useAction(removeWarehouse, {
+    onDone: (r) => {
+      if (r.ok) {
+        onClose();
+        router.push("/stock", { scroll: false });
+      }
+    },
+  });
   const kinds = useMemo(() => ["BONDED", "DUTY_PAID", "IN_TRANSIT"] as WarehouseKind[], []);
   return (
     <Modal
       open
       onClose={onClose}
-      title={t("stock.wh.title")}
+      title={edit ? t("stock.edit.title") : t("stock.wh.title")}
       footer={
         <>
+          {edit ? (
+            <button className="btn btn-ghost btn-danger" type="button" style={{ marginRight: "auto" }} disabled={removing} onClick={() => remove(edit.id)}>
+              <Icon name="Trash" size={16} />
+              {t("stock.edit.remove")}
+            </button>
+          ) : null}
           <button className="btn" type="button" onClick={onClose}>
             {t("common.cancel")}
           </button>
-          <button className="btn btn-primary" type="submit" form="wh-form" disabled={pending}>
-            {pending ? <Icon name="CircleNotch" size={16} className="spin" /> : <Icon name="Plus" size={16} />}
-            {t("stock.wh.confirm")}
+          <button className="btn btn-primary" type="submit" form="wh-form" disabled={pending || saving}>
+            {pending || saving ? <Icon name="CircleNotch" size={16} className="spin" /> : <Icon name={edit ? "FloppyDisk" : "Plus"} size={16} />}
+            {edit ? t("stock.edit.save") : t("stock.wh.confirm")}
           </button>
         </>
       }
@@ -352,12 +378,14 @@ function WarehouseModal({ onClose }: { onClose: () => void }) {
         onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);
-          run({ name: String(f.get("name") ?? ""), kind, city: String(f.get("city") ?? ""), exciseWarehouseNo: String(f.get("exciseNo") ?? "") });
+          const v = { name: String(f.get("name") ?? ""), kind, city: String(f.get("city") ?? ""), exciseWarehouseNo: String(f.get("exciseNo") ?? "") };
+          if (edit) save({ ...v, id: edit.id });
+          else run(v);
         }}
       >
         <label className="field">
           {t("stock.f.name")}
-          <input className="input" name="name" required maxLength={60} placeholder={t("stock.f.namePh")} autoFocus />
+          <input className="input" name="name" required maxLength={60} placeholder={t("stock.f.namePh")} defaultValue={edit?.name} autoFocus />
         </label>
         <label className="field">
           {t("stock.f.kind")}
@@ -373,15 +401,16 @@ function WarehouseModal({ onClose }: { onClose: () => void }) {
         <div className="form-grid">
           <label className="field">
             {t("stock.f.city")}
-            <input className="input" name="city" maxLength={60} />
+            <input className="input" name="city" maxLength={60} defaultValue={edit?.city ?? ""} />
           </label>
           {kind !== "DUTY_PAID" ? (
             <label className="field">
               {t("stock.f.exciseNo")}
-              <input className="input" name="exciseNo" maxLength={40} placeholder={t("stock.f.exciseNoPh")} />
+              <input className="input" name="exciseNo" maxLength={40} placeholder={t("stock.f.exciseNoPh")} defaultValue={edit?.exciseWarehouseNo ?? ""} />
             </label>
           ) : null}
         </div>
+        {edit ? <div className="field-label">{t("stock.edit.hint")}</div> : null}
       </form>
     </Modal>
   );

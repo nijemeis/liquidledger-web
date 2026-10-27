@@ -60,12 +60,7 @@ export async function seedAdministrationDefaults(tx: Tx, administrationId: strin
     data: NL_CHART.map((a) => ({ administrationId, code: a.code, nameNl: a.nl, nameEn: a.en, type: a.type, system: true })),
     skipDuplicates: true,
   });
-  const hasWarehouse = await tx.warehouse.count({ where: { administrationId } });
-  if (!hasWarehouse) {
-    await tx.warehouse.create({ data: { administrationId, name: "Main warehouse", kind: "DUTY_PAID" } });
-  }
-  const hasBank = await tx.bankAccount.count({ where: { administrationId } });
-  if (!hasBank) await tx.bankAccount.create({ data: { administrationId, name: "Bank", accountCode: "1000" } });
+  // No default bank account or warehouse: the user adds them (or a statement import does).
 }
 
 export async function addMembership(tx: Tx, userId: string, administrationId: string, role: Role) {

@@ -4,6 +4,9 @@ export default ns({
   en: {
     title: "Bank",
     noAccounts: "No bank accounts yet",
+    editAccount: "Edit account",
+    edit: { title: "Edit bank account", remove: "Remove account", hint: "An account that was never used is deleted; one with history is archived. Its ledger account stays.", save: "Save" },
+    remove: { open: "{n} lines on this account are still to reconcile. Reconcile them first." },
     noAccountsHint: "Add your business account, or import a statement (CAMT.053, MT940, ABN AMRO TXT): the account is added from the file.",
     noIban: "no IBAN",
     toReconcileN: "{n} to reconcile",
@@ -122,6 +125,9 @@ export default ns({
       },
     },
     toast: {
+      accountSaved: "Bank account {name} saved",
+      accountDeleted: "Bank account {name} deleted",
+      accountArchived: "Bank account {name} archived — its history stays in the ledger",
       autoCreated: "New bank account {name} added on ledger account {code}",
       salesPaid: "Reconciled and booked · {number} is now paid",
       salesPartial: "Reconciled and booked · {amount} of {number} is still open",
@@ -144,6 +150,9 @@ export default ns({
   nl: {
     title: "Bank",
     noAccounts: "Nog geen bankrekeningen",
+    editAccount: "Rekening bewerken",
+    edit: { title: "Bankrekening bewerken", remove: "Rekening verwijderen", hint: "Een rekening die nooit is gebruikt wordt verwijderd; een rekening met historie wordt gearchiveerd. De grootboekrekening blijft bestaan.", save: "Opslaan" },
+    remove: { open: "Op deze rekening staan nog {n} regels af te letteren. Doe dat eerst." },
     noAccountsHint: "Voeg je zakelijke rekening toe, of importeer een afschrift (CAMT.053, MT940, ABN AMRO TXT): de rekening wordt dan uit het bestand toegevoegd.",
     noIban: "geen IBAN",
     toReconcileN: "{n} af te letteren",
@@ -262,6 +271,9 @@ export default ns({
       },
     },
     toast: {
+      accountSaved: "Bankrekening {name} opgeslagen",
+      accountDeleted: "Bankrekening {name} verwijderd",
+      accountArchived: "Bankrekening {name} gearchiveerd — de historie blijft in het grootboek",
       autoCreated: "Nieuwe bankrekening {name} toegevoegd op grootboekrekening {code}",
       salesPaid: "Afgeletterd en geboekt · {number} is nu betaald",
       salesPartial: "Afgeletterd en geboekt · {amount} van {number} staat nog open",
@@ -284,6 +296,9 @@ export default ns({
   fr: {
     title: "Banque",
     noAccounts: "Aucun compte bancaire",
+    editAccount: "Modifier le compte",
+    edit: { title: "Modifier le compte bancaire", remove: "Supprimer le compte", hint: "Un compte jamais utilisé est supprimé ; un compte avec historique est archivé. Son compte général est conservé.", save: "Enregistrer" },
+    remove: { open: "{n} lignes de ce compte restent à rapprocher. Rapprochez-les d’abord." },
     noAccountsHint: "Ajoutez votre compte professionnel, ou importez un relevé (CAMT.053, MT940, TXT ABN AMRO) : le compte est ajouté à partir du fichier.",
     noIban: "pas d’IBAN",
     toReconcileN: "{n} à rapprocher",
@@ -402,6 +417,9 @@ export default ns({
       },
     },
     toast: {
+      accountSaved: "Compte bancaire {name} enregistré",
+      accountDeleted: "Compte bancaire {name} supprimé",
+      accountArchived: "Compte bancaire {name} archivé — son historique reste dans le grand livre",
       autoCreated: "Nouveau compte bancaire {name} ajouté sur le compte général {code}",
       salesPaid: "Rapproché et comptabilisé · {number} est payée",
       salesPartial: "Rapproché et comptabilisé · {amount} de {number} reste ouvert",
@@ -424,6 +442,9 @@ export default ns({
   de: {
     title: "Bank",
     noAccounts: "Noch keine Bankkonten",
+    editAccount: "Konto bearbeiten",
+    edit: { title: "Bankkonto bearbeiten", remove: "Konto entfernen", hint: "Ein nie genutztes Konto wird gelöscht, eines mit Verlauf archiviert. Das Sachkonto bleibt bestehen.", save: "Speichern" },
+    remove: { open: "Auf diesem Konto sind noch {n} Zeilen abzustimmen. Stimmen Sie diese zuerst ab." },
     noAccountsHint: "Legen Sie Ihr Geschäftskonto an oder importieren Sie einen Auszug (CAMT.053, MT940, ABN-AMRO-TXT): Das Konto wird aus der Datei angelegt.",
     noIban: "keine IBAN",
     toReconcileN: "{n} abzugleichen",
@@ -542,6 +563,9 @@ export default ns({
       },
     },
     toast: {
+      accountSaved: "Bankkonto {name} gespeichert",
+      accountDeleted: "Bankkonto {name} gelöscht",
+      accountArchived: "Bankkonto {name} archiviert — der Verlauf bleibt im Hauptbuch",
       autoCreated: "Neues Bankkonto {name} auf Sachkonto {code} angelegt",
       salesPaid: "Abgeglichen und gebucht · {number} ist jetzt bezahlt",
       salesPartial: "Abgeglichen und gebucht · {amount} von {number} ist noch offen",
@@ -564,6 +588,9 @@ export default ns({
   it: {
     title: "Banca",
     noAccounts: "Nessun conto bancario",
+    editAccount: "Modifica conto",
+    edit: { title: "Modifica conto bancario", remove: "Rimuovi conto", hint: "Un conto mai usato viene eliminato; uno con storico viene archiviato. Il conto di contabilità resta.", save: "Salva" },
+    remove: { open: "Su questo conto restano {n} righe da riconciliare. Riconciliale prima." },
     noAccountsHint: "Aggiungi il conto aziendale, oppure importa un estratto (CAMT.053, MT940, TXT ABN AMRO): il conto viene aggiunto dal file.",
     noIban: "nessun IBAN",
     toReconcileN: "{n} da riconciliare",
@@ -682,6 +709,9 @@ export default ns({
       },
     },
     toast: {
+      accountSaved: "Conto bancario {name} salvato",
+      accountDeleted: "Conto bancario {name} eliminato",
+      accountArchived: "Conto bancario {name} archiviato — lo storico resta in contabilità",
       autoCreated: "Nuovo conto bancario {name} aggiunto sul conto di contabilità {code}",
       salesPaid: "Riconciliato e registrato · {number} è ora pagata",
       salesPartial: "Riconciliato e registrato · {amount} di {number} è ancora aperto",
@@ -704,6 +734,9 @@ export default ns({
   es: {
     title: "Banco",
     noAccounts: "Aún no hay cuentas bancarias",
+    editAccount: "Editar cuenta",
+    edit: { title: "Editar cuenta bancaria", remove: "Quitar cuenta", hint: "Una cuenta que nunca se usó se elimina; una con historial se archiva. Su cuenta contable se mantiene.", save: "Guardar" },
+    remove: { open: "Quedan {n} líneas por conciliar en esta cuenta. Concílialas primero." },
     noAccountsHint: "Añade tu cuenta de empresa o importa un extracto (CAMT.053, MT940, TXT de ABN AMRO): la cuenta se añade desde el archivo.",
     noIban: "sin IBAN",
     toReconcileN: "{n} por conciliar",
@@ -822,6 +855,9 @@ export default ns({
       },
     },
     toast: {
+      accountSaved: "Cuenta bancaria {name} guardada",
+      accountDeleted: "Cuenta bancaria {name} eliminada",
+      accountArchived: "Cuenta bancaria {name} archivada — su historial sigue en la contabilidad",
       autoCreated: "Nueva cuenta bancaria {name} añadida en la cuenta contable {code}",
       salesPaid: "Conciliado y contabilizado · {number} ya está pagada",
       salesPartial: "Conciliado y contabilizado · quedan {amount} pendientes de {number}",
@@ -844,6 +880,9 @@ export default ns({
   pl: {
     title: "Bank",
     noAccounts: "Brak rachunków bankowych",
+    editAccount: "Edytuj konto",
+    edit: { title: "Edytuj konto bankowe", remove: "Usuń konto", hint: "Nieużywane konto zostanie usunięte, a konto z historią zarchiwizowane. Konto księgowe pozostaje.", save: "Zapisz" },
+    remove: { open: "Na tym koncie pozostało do uzgodnienia pozycji: {n}. Najpierw je uzgodnij." },
     noAccountsHint: "Dodaj konto firmowe albo zaimportuj wyciąg (CAMT.053, MT940, TXT ABN AMRO): konto zostanie dodane z pliku.",
     noIban: "brak IBAN",
     toReconcileN: "Do uzgodnienia: {n}",
@@ -962,6 +1001,9 @@ export default ns({
       },
     },
     toast: {
+      accountSaved: "Zapisano konto bankowe {name}",
+      accountDeleted: "Usunięto konto bankowe {name}",
+      accountArchived: "Zarchiwizowano konto bankowe {name} — historia pozostaje w księgach",
       autoCreated: "Dodano nowe konto bankowe {name} na koncie księgowym {code}",
       salesPaid: "Uzgodniono i zaksięgowano · {number} jest opłacona",
       salesPartial: "Uzgodniono i zaksięgowano · {amount} z {number} pozostaje otwarte",

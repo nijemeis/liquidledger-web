@@ -35,7 +35,8 @@ export default ns({
     emptyTitle: "Nothing in {name}",
     emptyText: "Move stock here or book a purchase into this location.",
     noWarehouses: "No locations yet. Add your first warehouse.",
-    actions: { move: "Move stock", samples: "Samples", count: "Stock count", addWarehouse: "Add warehouse" },
+    actions: { move: "Move stock", samples: "Samples", count: "Stock count", addWarehouse: "Add warehouse", editWarehouse: "Edit warehouse" },
+    edit: { title: "Edit warehouse", remove: "Remove warehouse", hint: "A warehouse that was never used is deleted; one with history is archived. It must be empty first.", save: "Save" },
     movements: { title: "Movements · {name}", sub: "Latest 50", empty: "No movements in this location yet." },
     reason: {
       OPENING: "Opening stock",
@@ -106,6 +107,9 @@ export default ns({
       confirm: "Add warehouse",
     },
     toast: {
+      warehouseSaved: "Warehouse {name} saved",
+      warehouseDeleted: "Warehouse {name} deleted",
+      warehouseArchived: "Warehouse {name} archived — its history stays available",
       moved: "Moved {qty} × {product} from {from} to {to}",
       movedExcise: "Moved {qty} × {product} to {to} · {amount} excise now payable",
       movedRelease: "Moved {qty} × {product} to {to} · released for consumption, excise now payable",
@@ -120,6 +124,8 @@ export default ns({
       warehouse: "Added {name} · {kind}. It now shows up in Move stock.",
     },
     err: {
+      kindUsed: "The type can't change once stock has moved through this warehouse.",
+      notEmpty: "{name} still holds {n} bottles. Move or count them out first.",
       qty: "Enter a number of bottles of at least 1.",
       counted: "Enter the counted number of bottles (0 or more).",
       product: "Pick a product.",
@@ -165,7 +171,8 @@ export default ns({
     emptyTitle: "Niets in {name}",
     emptyText: "Verplaats voorraad hierheen of boek een inkoop op deze locatie.",
     noWarehouses: "Nog geen locaties. Voeg je eerste magazijn toe.",
-    actions: { move: "Voorraad verplaatsen", samples: "Monsters", count: "Voorraadtelling", addWarehouse: "Magazijn toevoegen" },
+    actions: { move: "Voorraad verplaatsen", samples: "Monsters", count: "Voorraadtelling", addWarehouse: "Magazijn toevoegen", editWarehouse: "Magazijn bewerken" },
+    edit: { title: "Magazijn bewerken", remove: "Magazijn verwijderen", hint: "Een magazijn dat nooit is gebruikt wordt verwijderd; een magazijn met historie wordt gearchiveerd. Het moet eerst leeg zijn.", save: "Opslaan" },
     movements: { title: "Mutaties · {name}", sub: "Laatste 50", empty: "Nog geen mutaties op deze locatie." },
     reason: {
       OPENING: "Beginvoorraad",
@@ -236,6 +243,9 @@ export default ns({
       confirm: "Magazijn toevoegen",
     },
     toast: {
+      warehouseSaved: "Magazijn {name} opgeslagen",
+      warehouseDeleted: "Magazijn {name} verwijderd",
+      warehouseArchived: "Magazijn {name} gearchiveerd — de historie blijft beschikbaar",
       moved: "{qty} × {product} verplaatst van {from} naar {to}",
       movedExcise: "{qty} × {product} verplaatst naar {to} · {amount} accijns nu verschuldigd",
       movedRelease: "{qty} × {product} verplaatst naar {to} · uitgeslagen tot verbruik, accijns nu verschuldigd",
@@ -250,6 +260,8 @@ export default ns({
       warehouse: "{name} toegevoegd · {kind}. De locatie staat nu bij Voorraad verplaatsen.",
     },
     err: {
+      kindUsed: "Het soort kan niet meer veranderen zodra er voorraad door dit magazijn is gegaan.",
+      notEmpty: "In {name} liggen nog {n} flessen. Verplaats of tel ze eerst af.",
       qty: "Vul een aantal flessen in van minstens 1.",
       counted: "Vul het getelde aantal flessen in (0 of meer).",
       product: "Kies een product.",
@@ -295,7 +307,8 @@ export default ns({
     emptyTitle: "Rien dans {name}",
     emptyText: "Déplacez du stock ici ou comptabilisez un achat vers cet emplacement.",
     noWarehouses: "Aucun emplacement. Ajoutez votre premier entrepôt.",
-    actions: { move: "Déplacer du stock", samples: "Échantillons", count: "Inventaire", addWarehouse: "Ajouter un entrepôt" },
+    actions: { move: "Déplacer du stock", samples: "Échantillons", count: "Inventaire", addWarehouse: "Ajouter un entrepôt", editWarehouse: "Modifier l’entrepôt" },
+    edit: { title: "Modifier l’entrepôt", remove: "Supprimer l’entrepôt", hint: "Un entrepôt jamais utilisé est supprimé ; un entrepôt avec historique est archivé. Il doit d’abord être vide.", save: "Enregistrer" },
     movements: { title: "Mouvements · {name}", sub: "50 derniers", empty: "Aucun mouvement dans cet emplacement." },
     reason: {
       OPENING: "Stock d’ouverture",
@@ -366,6 +379,9 @@ export default ns({
       confirm: "Ajouter l’entrepôt",
     },
     toast: {
+      warehouseSaved: "Entrepôt {name} enregistré",
+      warehouseDeleted: "Entrepôt {name} supprimé",
+      warehouseArchived: "Entrepôt {name} archivé — son historique reste disponible",
       moved: "{qty} × {product} déplacés de {from} vers {to}",
       movedExcise: "{qty} × {product} déplacés vers {to} · {amount} d’accises désormais exigibles",
       movedRelease: "{qty} × {product} déplacés vers {to} · mis à la consommation, accises désormais exigibles",
@@ -380,6 +396,8 @@ export default ns({
       warehouse: "{name} ajouté · {kind}. Il apparaît maintenant dans Déplacer du stock.",
     },
     err: {
+      kindUsed: "Le type ne peut plus changer une fois que du stock est passé par cet entrepôt.",
+      notEmpty: "{name} contient encore {n} bouteilles. Déplacez-les ou inventoriez-les d’abord.",
       qty: "Saisissez un nombre de bouteilles d’au moins 1.",
       counted: "Saisissez le nombre de bouteilles comptées (0 ou plus).",
       product: "Choisissez un produit.",
@@ -425,7 +443,8 @@ export default ns({
     emptyTitle: "Nichts in {name}",
     emptyText: "Verschieben Sie Bestand hierher oder buchen Sie einen Einkauf auf diesen Standort.",
     noWarehouses: "Noch keine Standorte. Fügen Sie Ihr erstes Lager hinzu.",
-    actions: { move: "Bestand umlagern", samples: "Muster", count: "Inventur", addWarehouse: "Lager hinzufügen" },
+    actions: { move: "Bestand umlagern", samples: "Muster", count: "Inventur", addWarehouse: "Lager hinzufügen", editWarehouse: "Lager bearbeiten" },
+    edit: { title: "Lager bearbeiten", remove: "Lager entfernen", hint: "Ein nie genutztes Lager wird gelöscht, eines mit Verlauf archiviert. Es muss zuerst leer sein.", save: "Speichern" },
     movements: { title: "Bewegungen · {name}", sub: "Letzte 50", empty: "Noch keine Bewegungen an diesem Standort." },
     reason: {
       OPENING: "Anfangsbestand",
@@ -496,6 +515,9 @@ export default ns({
       confirm: "Lager hinzufügen",
     },
     toast: {
+      warehouseSaved: "Lager {name} gespeichert",
+      warehouseDeleted: "Lager {name} gelöscht",
+      warehouseArchived: "Lager {name} archiviert — der Verlauf bleibt verfügbar",
       moved: "{qty} × {product} von {from} nach {to} umgelagert",
       movedExcise: "{qty} × {product} nach {to} umgelagert · {amount} Verbrauchsteuer jetzt fällig",
       movedRelease: "{qty} × {product} nach {to} umgelagert · in den freien Verkehr überführt, Verbrauchsteuer jetzt fällig",
@@ -510,6 +532,8 @@ export default ns({
       warehouse: "{name} hinzugefügt · {kind}. Erscheint jetzt unter Bestand umlagern.",
     },
     err: {
+      kindUsed: "Die Art kann nicht mehr geändert werden, sobald Bestand durch dieses Lager gegangen ist.",
+      notEmpty: "In {name} liegen noch {n} Flaschen. Lagern Sie sie zuerst um oder buchen Sie sie per Inventur aus.",
       qty: "Geben Sie mindestens 1 Flasche ein.",
       counted: "Geben Sie die gezählte Flaschenzahl ein (0 oder mehr).",
       product: "Wählen Sie ein Produkt.",
@@ -555,7 +579,8 @@ export default ns({
     emptyTitle: "Niente in {name}",
     emptyText: "Sposta merce qui o registra un acquisto in questa ubicazione.",
     noWarehouses: "Nessuna ubicazione. Aggiungi il primo magazzino.",
-    actions: { move: "Sposta merce", samples: "Campioni", count: "Inventario", addWarehouse: "Aggiungi magazzino" },
+    actions: { move: "Sposta merce", samples: "Campioni", count: "Inventario", addWarehouse: "Aggiungi magazzino", editWarehouse: "Modifica magazzino" },
+    edit: { title: "Modifica magazzino", remove: "Rimuovi magazzino", hint: "Un magazzino mai usato viene eliminato; uno con storico viene archiviato. Deve prima essere vuoto.", save: "Salva" },
     movements: { title: "Movimenti · {name}", sub: "Ultimi 50", empty: "Nessun movimento in questa ubicazione." },
     reason: {
       OPENING: "Giacenza iniziale",
@@ -626,6 +651,9 @@ export default ns({
       confirm: "Aggiungi magazzino",
     },
     toast: {
+      warehouseSaved: "Magazzino {name} salvato",
+      warehouseDeleted: "Magazzino {name} eliminato",
+      warehouseArchived: "Magazzino {name} archiviato — lo storico resta disponibile",
       moved: "Spostati {qty} × {product} da {from} a {to}",
       movedExcise: "Spostati {qty} × {product} a {to} · {amount} di accisa ora esigibili",
       movedRelease: "Spostati {qty} × {product} a {to} · immessi in consumo, accisa ora esigibile",
@@ -640,6 +668,8 @@ export default ns({
       warehouse: "Aggiunto {name} · {kind}. Ora compare in Sposta merce.",
     },
     err: {
+      kindUsed: "Il tipo non può più cambiare una volta che la merce è passata da questo magazzino.",
+      notEmpty: "In {name} ci sono ancora {n} bottiglie. Spostale o scaricale con un inventario prima.",
       qty: "Inserisci un numero di bottiglie di almeno 1.",
       counted: "Inserisci il numero di bottiglie contate (0 o più).",
       product: "Scegli un prodotto.",
@@ -685,7 +715,8 @@ export default ns({
     emptyTitle: "Nada en {name}",
     emptyText: "Mueve stock aquí o contabiliza una compra en esta ubicación.",
     noWarehouses: "Aún no hay ubicaciones. Añade tu primer almacén.",
-    actions: { move: "Mover stock", samples: "Muestras", count: "Recuento", addWarehouse: "Añadir almacén" },
+    actions: { move: "Mover stock", samples: "Muestras", count: "Recuento", addWarehouse: "Añadir almacén", editWarehouse: "Editar almacén" },
+    edit: { title: "Editar almacén", remove: "Quitar almacén", hint: "Un almacén que nunca se usó se elimina; uno con historial se archiva. Primero debe estar vacío.", save: "Guardar" },
     movements: { title: "Movimientos · {name}", sub: "Últimos 50", empty: "Aún no hay movimientos en esta ubicación." },
     reason: {
       OPENING: "Stock inicial",
@@ -756,6 +787,9 @@ export default ns({
       confirm: "Añadir almacén",
     },
     toast: {
+      warehouseSaved: "Almacén {name} guardado",
+      warehouseDeleted: "Almacén {name} eliminado",
+      warehouseArchived: "Almacén {name} archivado — su historial sigue disponible",
       moved: "Movidas {qty} × {product} de {from} a {to}",
       movedExcise: "Movidas {qty} × {product} a {to} · {amount} de impuestos especiales ya exigibles",
       movedRelease: "Movidas {qty} × {product} a {to} · despachadas a consumo, impuestos especiales ya exigibles",
@@ -770,6 +804,8 @@ export default ns({
       warehouse: "{name} añadido · {kind}. Ya aparece en Mover stock.",
     },
     err: {
+      kindUsed: "El tipo ya no puede cambiar una vez que ha pasado stock por este almacén.",
+      notEmpty: "{name} aún tiene {n} botellas. Muévelas o dalas de baja con un recuento primero.",
       qty: "Introduce un número de botellas de al menos 1.",
       counted: "Introduce el número de botellas contadas (0 o más).",
       product: "Elige un producto.",
@@ -815,7 +851,8 @@ export default ns({
     emptyTitle: "Nic w {name}",
     emptyText: "Przenieś tu towar lub zaksięguj zakup do tej lokalizacji.",
     noWarehouses: "Brak lokalizacji. Dodaj pierwszy magazyn.",
-    actions: { move: "Przenieś towar", samples: "Próbki", count: "Inwentaryzacja", addWarehouse: "Dodaj magazyn" },
+    actions: { move: "Przenieś towar", samples: "Próbki", count: "Inwentaryzacja", addWarehouse: "Dodaj magazyn", editWarehouse: "Edytuj magazyn" },
+    edit: { title: "Edytuj magazyn", remove: "Usuń magazyn", hint: "Nieużywany magazyn zostanie usunięty, a magazyn z historią zarchiwizowany. Najpierw musi być pusty.", save: "Zapisz" },
     movements: { title: "Ruchy · {name}", sub: "Ostatnie 50", empty: "Brak ruchów w tej lokalizacji." },
     reason: {
       OPENING: "Stan otwarcia",
@@ -886,6 +923,9 @@ export default ns({
       confirm: "Dodaj magazyn",
     },
     toast: {
+      warehouseSaved: "Zapisano magazyn {name}",
+      warehouseDeleted: "Usunięto magazyn {name}",
+      warehouseArchived: "Zarchiwizowano magazyn {name} — historia pozostaje dostępna",
       moved: "Przeniesiono {qty} × {product} z {from} do {to}",
       movedExcise: "Przeniesiono {qty} × {product} do {to} · {amount} akcyzy do zapłaty",
       movedRelease: "Przeniesiono {qty} × {product} do {to} · dopuszczono do konsumpcji, akcyza do zapłaty",
@@ -900,6 +940,8 @@ export default ns({
       warehouse: "Dodano {name} · {kind}. Jest teraz dostępny w Przenieś towar.",
     },
     err: {
+      kindUsed: "Rodzaju nie można zmienić, gdy przez magazyn przeszedł już towar.",
+      notEmpty: "W {name} jest jeszcze butelek: {n}. Najpierw je przenieś lub rozlicz inwentaryzacją.",
       qty: "Wpisz liczbę butelek, co najmniej 1.",
       counted: "Wpisz liczbę policzonych butelek (0 lub więcej).",
       product: "Wybierz produkt.",

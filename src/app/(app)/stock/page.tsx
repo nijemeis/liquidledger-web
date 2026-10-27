@@ -90,7 +90,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
   const actionProducts: StockProduct[] = d.products
     .filter((p) => !p.archivedAt || unitsIn(d.levels, p.id) > 0)
     .map((p) => ({ id: p.id, name: p.name, sku: p.sku, costCents: money ? p.costCents : 0, excisePerUnit: money ? (perUnit.get(p.id) ?? 0) : 0 }));
-  const actionWarehouses: StockWarehouse[] = d.warehouses.map((w) => ({ id: w.id, name: w.name, kind: w.kind }));
+  const actionWarehouses: StockWarehouse[] = d.warehouses.map((w) => ({ id: w.id, name: w.name, kind: w.kind, city: w.city, exciseWarehouseNo: w.exciseWarehouseNo }));
 
   const reasonLabel = (m: (typeof d.movements)[number]) => {
     const incoming = m.toWarehouseId === sel?.id;

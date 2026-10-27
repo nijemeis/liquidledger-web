@@ -257,16 +257,16 @@ async function main() {
   const ids = await tenant(A, async (tx) => {
     const wh = {
       rtm: await tx.warehouse.create({ data: { administrationId: A, name: "Rotterdam", kind: "BONDED", city: "Rotterdam", exciseWarehouseNo: "NL00000123BGP" } }),
-      ams: await tx.warehouse.findFirstOrThrow({ where: { administrationId: A } }),
+      ams: await tx.warehouse.create({ data: { administrationId: A, name: "Amsterdam", kind: "DUTY_PAID", city: "Amsterdam" } }),
       transit: await tx.warehouse.create({ data: { administrationId: A, name: "In transit", kind: "IN_TRANSIT" } }),
     };
-    await tx.warehouse.update({ where: { id: wh.ams.id }, data: { name: "Amsterdam", city: "Amsterdam" } });
     const bank = {
-      ing: await tx.bankAccount.findFirstOrThrow({ where: { administrationId: A } }),
+      ing: await tx.bankAccount.create({
+        data: { administrationId: A, name: "ING Current", iban: "NL13 INGB 0006 6544 71", accountCode: "1000", openingBalanceCents: eur(60000), provider: "camt", lastSyncedAt: new Date(TODAY.getTime() + 7 * 3600_000 + 12 * 60_000) },
+      }),
       sav: await tx.bankAccount.create({ data: { administrationId: A, name: "ING Savings", iban: "NL20 INGB 0001 2399 02", accountCode: "1010", openingBalanceCents: eur(40000), provider: "camt" } }),
       wise: await tx.bankAccount.create({ data: { administrationId: A, name: "Wise USD", iban: "BE76 9670 2551 0318", currency: "USD", accountCode: "1020", openingBalanceCents: eur(12480.2), provider: "manual" } }),
     };
-    await tx.bankAccount.update({ where: { id: bank.ing.id }, data: { name: "ING Current", iban: "NL13 INGB 0006 6544 71", openingBalanceCents: eur(60000), provider: "camt", lastSyncedAt: new Date(TODAY.getTime() + 7 * 3600_000 + 12 * 60_000) } });
 
     const products = {} as Record<PKey, string>;
     for (const [k, p] of Object.entries(PRODUCTS) as [PKey, (typeof PRODUCTS)[PKey]][]) {

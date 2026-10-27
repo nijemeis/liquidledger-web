@@ -148,3 +148,55 @@ export async function addWarehouse(input: z.input<typeof WarehouseInput>) {
     return { message: t("stock.toast.warehouse", { name: w.name, kind: t(`stock.kindLong.${w.kind}`) }), id: w.id };
   });
 }
+
+const WarehouseEdit = WarehouseInput.extend({ id: z.string().min(1) });
+
+/** Edit a warehouse; its kind can only change while no stock has moved through it. */
+export async function updateWarehouse(input: z.input<typeof WarehouseEdit>) {
+  return appAction("stock", async (ctx, tx) => {
+    const { t } = await getI18n(ctx.locale);
+    const p = WarehouseEdit.safeParse(input);
+    if (!p.success) throw new PostingError(t("stock.err.name"));
+    const d = p.data;
+    const A = ctx.administration.id;
+    const w = await tx.warehouse.findFirst({ where: { id: d.id, administrationId: A, archivedAt: null } });
+    if (!w) throw new PostingError(t("stock.err.warehouse"));
+    const dup = await tx.warehouse.findFirst({ where: { administrationId: A, archivedAt: null, id: { not: w.id }, name: { equals: d.name, mode: "insensitive" } } });
+    if (dup) throw new PostingError(t("stock.err.duplicate", { name: d.name }));
+    if (d.kind !== w.kind) {
+      const moves = await tx.stockMovement.count({ where: { administrationId: A, OR: [{ fromWarehouseId: w.id }, { toWarehouseId: w.id }] } });
+      if (moves) throw new PostingError(t("stock.err.kindUsed"));
+    }
+    const after = { name: d.name, kind: d.kind, city: d.city || null, exciseWarehouseNo: d.exciseWarehouseNo || null };
+    await tx.warehouse.update({ where: { id: w.id }, data: after });
+    await auditApp(ctx, "stock.warehouse.update", `Updated warehouse ${after.name}`, { targetType: "warehouse", targetId: w.id, before: { name: w.name, kind: w.kind, city: w.city, exciseWarehouseNo: w.exciseWarehouseNo }, after }, tx);
+    return { message: t("stock.toast.warehouseSaved", { name: after.name }) };
+  });
+}
+
+/** Delete a warehouse that was never used; archive an empty one with history. */
+export async function removeWarehouse(id: string) {
+  return appAction("stock", async (ctx, tx) => {
+    const { t, fmt } = await getI18n(ctx.locale);
+    const A = ctx.administration.id;
+    const w = await tx.warehouse.findFirst({ where: { id, administrationId: A, archivedAt: null } });
+    if (!w) throw new PostingError(t("stock.err.warehouse"));
+    const levels = await stockLevels(tx, A);
+    let units = 0;
+    for (const m of levels.values()) units += m.get(w.id) ?? 0;
+    if (units) throw new PostingError(t("stock.err.notEmpty", { name: w.name, n: fmt.int(units) }));
+    const [moves, sales, purchases] = await Promise.all([
+      tx.stockMovement.count({ where: { administrationId: A, OR: [{ fromWarehouseId: w.id }, { toWarehouseId: w.id }] } }),
+      tx.salesInvoice.count({ where: { administrationId: A, warehouseId: w.id } }),
+      tx.purchaseInvoice.count({ where: { administrationId: A, warehouseId: w.id } }),
+    ]);
+    if (!moves && !sales && !purchases) {
+      await tx.warehouse.delete({ where: { id: w.id } });
+      await auditApp(ctx, "stock.warehouse.delete", `Deleted unused warehouse ${w.name}`, { targetType: "warehouse", targetId: w.id, before: { name: w.name, kind: w.kind } }, tx);
+      return { message: t("stock.toast.warehouseDeleted", { name: w.name }) };
+    }
+    await tx.warehouse.update({ where: { id: w.id }, data: { archivedAt: new Date() } });
+    await auditApp(ctx, "stock.warehouse.archive", `Archived warehouse ${w.name}`, { targetType: "warehouse", targetId: w.id }, tx);
+    return { message: t("stock.toast.warehouseArchived", { name: w.name }) };
+  });
+}

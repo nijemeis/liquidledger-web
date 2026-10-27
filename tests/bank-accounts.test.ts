@@ -39,8 +39,9 @@ describe("bank accounts from a statement", () => {
 
   it("uses 1000 first, then the next free 10xx code, booking the opening balance", async () => {
     const first = await withTenant(A, async (tx) => {
-      // A new administration may already have a bank account on 1000; start from none.
-      await tx.bankAccount.deleteMany({ where: { administrationId: A } });
+      // A new administration starts without bank accounts or warehouses.
+      expect(await tx.bankAccount.count({ where: { administrationId: A } })).toBe(0);
+      expect(await tx.warehouse.count({ where: { administrationId: A } })).toBe(0);
       const l = await bankLedgerFor(tx, A);
       expect(l).toEqual({ code: "1000", exists: true });
       return createBankAccount(tx, { administrationId: A, baseCurrency: "EUR", name: "ABN AMRO ··4300", iban: "NL91ABNA0417164300", currency: "EUR", accountCode: l.code, createLedger: !l.exists, opening });
@@ -64,7 +65,6 @@ describe("bank accounts from a statement", () => {
   it("doesn't book the opening balance when the ledger account already carries money (after an auditfile import)", async () => {
     const B = await fresh("Imported BV");
     const res = await withTenant(B, async (tx) => {
-      await tx.bankAccount.deleteMany({ where: { administrationId: B } });
       await post(tx, { administrationId: B, date: new Date("2026-01-01T00:00:00Z"), title: "Imported opening", source: "IMPORT", lines: [{ account: "1000", debit: 50000 }, { account: "0800", credit: 50000 }] });
       const l = await bankLedgerFor(tx, B);
       return createBankAccount(tx, { administrationId: B, baseCurrency: "EUR", name: "ABN AMRO ··4300", iban: "NL91ABNA0417164300", currency: "EUR", accountCode: l.code, createLedger: !l.exists, opening });

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Modal, useAction, useToast } from "@/components/client";
 import { Icon, type IconName } from "@/components/icon";
 import { useI18n } from "@/i18n/client";
-import { acceptAll, addBankAccount, importStatement, matchLine, reconcileOther, sepaPreview } from "./actions";
+import { acceptAll, addBankAccount, importStatement, matchLine, reconcileOther, removeBankAccount, sepaPreview, updateBankAccount } from "./actions";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -315,7 +315,8 @@ interface AccountOpt {
 
 export function BankActions({ accounts, selectedId, suggestCount, reconcilable, ledger10 }: { accounts: AccountOpt[]; selectedId: string | null; suggestCount: number; reconcilable: boolean; ledger10: { code: string; name: string }[] }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState<null | "import" | "add" | "sepa">(null);
+  const [open, setOpen] = useState<null | "import" | "add" | "sepa" | "edit">(null);
+  const current = accounts.find((a) => a.id === selectedId);
   const [accept, accepting] = useAction(acceptAll);
   return (
     <>
@@ -323,6 +324,12 @@ export function BankActions({ accounts, selectedId, suggestCount, reconcilable, 
         <Icon name="UploadSimple" size={16} />
         {t("bank.importStatement")}
       </button>
+      {current ? (
+        <button className="btn" onClick={() => setOpen("edit")}>
+          <Icon name="PencilSimple" size={16} />
+          {t("bank.editAccount")}
+        </button>
+      ) : null}
       <button className="btn" onClick={() => setOpen("add")}>
         <Icon name="Plus" size={16} />
         {t("bank.addAccount")}
@@ -342,6 +349,7 @@ export function BankActions({ accounts, selectedId, suggestCount, reconcilable, 
       {open === "import" ? <ImportModal accounts={accounts} selectedId={selectedId} onClose={() => setOpen(null)} /> : null}
       {open === "add" ? <AddAccountModal ledger10={ledger10} onClose={() => setOpen(null)} /> : null}
       {open === "sepa" ? <SepaModal selectedId={selectedId} onClose={() => setOpen(null)} /> : null}
+      {open === "edit" && current ? <EditAccountModal account={current} onClose={() => setOpen(null)} /> : null}
     </>
   );
 }
@@ -420,6 +428,56 @@ function ImportModal({ accounts, selectedId, onClose }: { accounts: AccountOpt[]
         <input ref={input} type="file" accept=".xml,.csv,.txt,.tab,.sta,.940,.mt940,application/xml,text/xml,text/csv,text/plain" hidden onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
       </div>
       <div style={{ fontSize: 12.5, color: "#5b6474" }}>{t("bank.import.csvHint")}</div>
+    </Modal>
+  );
+}
+
+function EditAccountModal({ account, onClose }: { account: AccountOpt; onClose: () => void }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [name, setName] = useState(account.name);
+  const [iban, setIban] = useState(account.iban ?? "");
+  const [save, saving] = useAction(updateBankAccount, { onDone: (r) => r.ok && onClose() });
+  const [remove, removing] = useAction(removeBankAccount, {
+    onDone: (r) => {
+      if (r.ok) {
+        onClose();
+        router.push("/bank");
+      }
+    },
+  });
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={t("bank.edit.title")}
+      width={480}
+      footer={
+        <>
+          <button className="btn btn-ghost btn-danger" style={{ marginRight: "auto" }} disabled={removing} onClick={() => remove(account.id)}>
+            <Icon name="Trash" size={16} />
+            {t("bank.edit.remove")}
+          </button>
+          <button className="btn" onClick={onClose}>{t("common.cancel")}</button>
+          <button className="btn btn-primary" disabled={saving || !name.trim()} onClick={() => save({ id: account.id, name, iban })}>
+            <Icon name={saving ? "CircleNotch" : "FloppyDisk"} size={16} className={saving ? "spin" : undefined} />
+            {t("bank.edit.save")}
+          </button>
+        </>
+      }
+    >
+      <label className="field">
+        {t("bank.add.name")}
+        <input className="input" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} autoFocus />
+      </label>
+      <label className="field">
+        IBAN
+        <input className="input n" value={iban} maxLength={42} onChange={(e) => setIban(e.target.value)} />
+      </label>
+      <div style={{ fontSize: 12.5, color: "#5b6474" }}>
+        {t("bank.add.ledger")}: {account.accountCode} · {account.currency}
+      </div>
+      <div style={{ fontSize: 12.5, color: "#5b6474" }}>{t("bank.edit.hint")}</div>
     </Modal>
   );
 }

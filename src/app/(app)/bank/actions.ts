@@ -334,3 +334,63 @@ export async function sepaPreview() {
     { revalidate: [] },
   );
 }
+
+const editSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1).max(80),
+  iban: z.string().trim().max(42).optional().default(""),
+});
+
+/** Rename a bank account or change its IBAN. */
+export async function updateBankAccount(input: z.input<typeof editSchema>) {
+  return appAction(
+    "bank",
+    async (ctx, tx) => {
+      const { t } = await getI18n(ctx.locale);
+      const v = editSchema.safeParse(input);
+      if (!v.success) throw new PostingError(t("bank.add.needName"));
+      const A = ctx.administration.id;
+      const acct = await tx.bankAccount.findFirst({ where: { id: v.data.id, administrationId: A, archivedAt: null } });
+      if (!acct) throw new PostingError(t("bank.import.pickAccount"));
+      const iban = v.data.iban ? compactIban(v.data.iban) : null;
+      if (iban && !isValidIban(iban)) throw new PostingError(t("bank.add.badIban"));
+      if (iban) {
+        const others = await tx.bankAccount.findMany({ where: { administrationId: A, archivedAt: null, id: { not: acct.id } }, select: { iban: true } });
+        if (others.some((b) => b.iban && compactIban(b.iban) === iban)) throw new PostingError(t("bank.add.dupIban"));
+      }
+      const after = { name: v.data.name, iban: iban ? iban.replace(/(.{4})/g, "$1 ").trim() : null };
+      await tx.bankAccount.update({ where: { id: acct.id }, data: after });
+      await auditApp(ctx, "bank.account_update", `Updated bank account ${after.name}`, { targetType: "bank_account", targetId: acct.id, before: { name: acct.name, iban: acct.iban }, after }, tx);
+      return { message: t("bank.toast.accountSaved", { name: after.name }) };
+    },
+    REVALIDATE,
+  );
+}
+
+/** Delete a bank account that was never used; archive one with history (only when nothing is left to reconcile). */
+export async function removeBankAccount(id: string) {
+  return appAction(
+    "bank",
+    async (ctx, tx) => {
+      const { t } = await getI18n(ctx.locale);
+      const A = ctx.administration.id;
+      const acct = await tx.bankAccount.findFirst({ where: { id, administrationId: A, archivedAt: null } });
+      if (!acct) throw new PostingError(t("bank.import.pickAccount"));
+      const [lines, open, opening] = await Promise.all([
+        tx.bankTransaction.count({ where: { administrationId: A, bankAccountId: acct.id } }),
+        tx.bankTransaction.count({ where: { administrationId: A, bankAccountId: acct.id, status: "UNRECONCILED" } }),
+        tx.journalEntry.count({ where: { administrationId: A, source: "OPENING", sourceId: acct.id } }),
+      ]);
+      if (open) throw new PostingError(t("bank.remove.open", { n: open }));
+      if (!lines && !opening) {
+        await tx.bankAccount.delete({ where: { id: acct.id } });
+        await auditApp(ctx, "bank.account_delete", `Deleted unused bank account ${acct.name}`, { targetType: "bank_account", targetId: acct.id, before: { name: acct.name, iban: acct.iban } }, tx);
+        return { message: t("bank.toast.accountDeleted", { name: acct.name }) };
+      }
+      await tx.bankAccount.update({ where: { id: acct.id }, data: { archivedAt: new Date() } });
+      await auditApp(ctx, "bank.account_archive", `Archived bank account ${acct.name}`, { targetType: "bank_account", targetId: acct.id }, tx);
+      return { message: t("bank.toast.accountArchived", { name: acct.name }) };
+    },
+    REVALIDATE,
+  );
+}
