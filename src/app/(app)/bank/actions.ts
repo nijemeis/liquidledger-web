@@ -203,7 +203,9 @@ export async function importStatement(form: FormData) {
         if (e instanceof StatementError) throw new PostingError(t("bank.import.badFile"));
         throw e;
       }
-      const statements = parsed.statements.map((s) => ({ ...s, txs: s.txs.filter((x) => x.amountCents !== 0 && !Number.isNaN(x.date.getTime())) })).filter((s) => s.txs.length);
+      // Never drop a line silently: an unreadable amount or date makes the whole file fail.
+      if (parsed.statements.some((st) => st.txs.some((x) => !Number.isFinite(x.amountCents) || Number.isNaN(x.date.getTime())))) throw new PostingError(t("bank.import.badFile"));
+      const statements = parsed.statements.map((s) => ({ ...s, txs: s.txs.filter((x) => x.amountCents !== 0) })).filter((s) => s.txs.length);
       if (!statements.length) throw new PostingError(t("bank.import.empty"));
 
       const accounts = await tx.bankAccount.findMany({ where: { administrationId: A, archivedAt: null } });

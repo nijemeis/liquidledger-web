@@ -90,6 +90,8 @@ export function amountCents(raw: string): number {
   let a = raw.replace(/[€\s]/g, "");
   if (a.lastIndexOf(",") > a.lastIndexOf(".")) a = a.replace(/\./g, "").replace(",", ".");
   else a = a.replace(/,/g, "");
+  // MT940 writes whole amounts as "1000," — a trailing separator without decimals.
+  if (a.endsWith(".")) a = a.slice(0, -1);
   if (!/^[+-]?\d*(\.\d+)?$/.test(a) || a === "" || a === "-") return NaN;
   return Math.round(Number(a) * 100);
 }
@@ -197,14 +199,15 @@ function mt940Account(raw: string, bankCode: string | undefined): { iban?: strin
 export function parseMt940(text: string): ParsedStatement[] {
   const bankCode = /\b(ABNA|INGB|RABO|SNSB|TRIO|ASNB|RBRB|KNAB|BUNQ)/.exec(text.slice(0, 200))?.[1];
   // Fields start with ":NN[A]:" at the start of a line; other lines continue the previous field.
-  // :86: wraps at 65 characters: a full line continues mid-word, a shorter one ended at a word.
+  // :86: wraps at 65 characters of text: a full line continues mid-word; a shorter one
+  // ended at a space the bank dropped (ABN AMRO), so a space goes back in.
   const fields: { tag: string; value: string; last: number }[] = [];
   for (const line of text.split(/\r?\n/)) {
     const m = /^:(\d{2}[A-Z]?):(.*)$/.exec(line);
-    if (m) fields.push({ tag: m[1]!, value: m[2]!, last: line.length });
+    if (m) fields.push({ tag: m[1]!, value: m[2]!, last: m[2]!.length });
     else if (fields.length && line.trim() && !/^-\}?$/.test(line.trim()) && !/^\{/.test(line)) {
       const f = fields[fields.length - 1]!;
-      f.value += f.tag === "86" ? (f.last >= 64 ? "" : " ") + line : "\n" + line;
+      f.value += f.tag === "86" ? (f.last >= 65 ? "" : " ") + line : "\n" + line;
       f.last = line.length;
     }
   }

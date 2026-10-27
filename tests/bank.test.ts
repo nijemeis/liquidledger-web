@@ -80,6 +80,30 @@ describe("statement formats (ABN AMRO and others)", () => {
     expect(st!.txs[1]!.date.toISOString().slice(0, 10)).toBe("2026-04-03");
   });
 
+  it("handles whole amounts written as '1000,' and spaces the bank drops at a line break", () => {
+    const sta = [
+      ":20:ABN AMRO BANK NV",
+      ":25:417164300",
+      ":60F:C260909EUR100,00",
+      ":61:2609180918D1000,N658NONREF",
+      ":86:/TRTP/SEPA OVERBOEKING/IBAN/NL44RABO0123456789/BIC/RABONL2U/NAME/",
+      "VOORBEELD TRANSPORT BV/REMI/VRACHT/EREF/NOTPROVIDED",
+      ":61:2609240924D62,32N658NONREF",
+      ":86:/TRTP/SEPA OVERBOEKING/IBAN/NL44RABO0123456789/BIC/RABONL2U/NAME/",
+      "VOORBEELD EXPEDITIE- & OPSLAGBEDRIJF B.V./REMI/FACTUUR 26059800",
+      "KLANT 11113/EREF/NOTPROVIDED",
+      ":61:2609250925D15,21N526NONREF",
+      ":86:ABN AMRO BANK N.V.               UW MAANDTARIFERINGSNOTA IS",
+      "BESCHIKBAAR ONDER ZELF REGELEN.",
+      ":62F:D260925EUR977,53",
+      "-",
+    ].join("\r\n");
+    const [st] = parseStatement(sta).statements;
+    expect(st!.txs.map((x) => x.amountCents)).toEqual([-100000, -6232, -1521]);
+    expect(st!.txs[1]!.description).toBe("FACTUUR 26059800 KLANT 11113");
+    expect(st!.txs[2]).toMatchObject({ counterparty: "ABN AMRO", description: "ABN AMRO BANK N.V. UW MAANDTARIFERINGSNOTA IS BESCHIKBAAR ONDER ZELF REGELEN." });
+  });
+
   it("reads ABN AMRO TXT (tab-separated)", () => {
     const txt = [
       "417164300\tEUR\t20260402\t1234,56\t1222,06\t20260402\t-12,50\tBEA, Betaalpas ALBERT HEIJN 1234,PAS123 NR:X, 02.04.26/12:34 AMSTERDAM",
