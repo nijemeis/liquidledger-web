@@ -3,6 +3,7 @@ import { z } from "zod";
 import { appAction, auditApp } from "@/lib/app-context";
 import { getI18n } from "@/i18n/server";
 import { PostingError } from "@/lib/domain/ledger";
+import { newProductIssues, parseProductSheet } from "@/lib/domain/product-import";
 import { parseMoney } from "@/lib/format";
 
 
@@ -140,3 +141,86 @@ export async function setProductArchived(id: string, archived: boolean) {
   });
 }
 
+
+const ImportInput = z.object({ text: z.string().max(5_000_000), update: z.boolean() });
+
+/**
+ * Products from a spreadsheet (pasted or CSV). New SKUs are created; existing
+ * ones are updated with the columns that are filled in when `update` is on,
+ * otherwise left alone. Rows with problems are skipped — the preview shows them.
+ */
+export async function importProducts(raw: z.input<typeof ImportInput>) {
+  const input = ImportInput.parse(raw);
+  return appAction(
+    "stock",
+    async (ctx, tx) => {
+      const { t } = await getI18n(ctx.locale);
+      const A = ctx.administration.id;
+      const sheet = parseProductSheet(input.text);
+      if (sheet.missing.includes("sku")) throw new PostingError(t("products.import.err.noSku"));
+      if (sheet.rows.length > 5000) throw new PostingError(t("products.import.err.tooMany"));
+      const existing = new Map((await tx.product.findMany({ where: { administrationId: A }, include: { prices: true } })).map((p) => [p.sku, p]));
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+      for (const row of sheet.rows) {
+        const p = row.product;
+        const before = existing.get(p.sku);
+        if (row.issues.length || (!before && newProductIssues(p).length) || (before && !input.update)) {
+          skipped++;
+          continue;
+        }
+        const fields = {
+          ...(p.name !== undefined && { name: p.name }),
+          ...(p.category !== undefined && { category: p.category }),
+          ...(p.volumeMl !== undefined && { volumeMl: p.volumeMl }),
+          ...(p.abvBp !== undefined && { abvBp: p.abvBp }),
+          ...(p.platoTenths !== undefined && { platoTenths: p.platoTenths }),
+          ...(p.sparkling !== undefined && { sparkling: p.sparkling }),
+          ...(p.unitsPerCase !== undefined && { unitsPerCase: p.unitsPerCase }),
+          ...(p.casesPerPallet !== undefined && { casesPerPallet: p.casesPerPallet }),
+          ...(p.ean !== undefined && { ean: p.ean }),
+          ...(p.cnCode !== undefined && { cnCode: p.cnCode }),
+          ...(p.emcsCode !== undefined && { emcsCode: p.emcsCode }),
+          ...(p.producer !== undefined && { producer: p.producer }),
+          ...(p.region !== undefined && { region: p.region }),
+          ...(p.originCountry !== undefined && { originCountry: p.originCountry }),
+          ...(p.vintage !== undefined && { vintage: p.vintage }),
+          ...(p.depositCents !== undefined && { depositCents: p.depositCents }),
+          ...(p.reorderLevel !== undefined && { reorderLevel: p.reorderLevel }),
+        };
+        let productId: string;
+        if (before) {
+          // The cost price of an existing product is its moving average from stock movements; leave it.
+          await tx.product.update({ where: { id: before.id }, data: fields });
+          productId = before.id;
+          updated++;
+        } else {
+          const createdRow = await tx.product.create({
+            data: {
+              administrationId: A,
+              sku: p.sku,
+              name: p.name!,
+              category: p.category!,
+              volumeMl: p.volumeMl!,
+              ...fields,
+              costCents: p.costCents ?? 0,
+            },
+          });
+          productId = createdRow.id;
+          created++;
+        }
+        // Prices are versioned: only a changed price adds a row.
+        for (const [list, cents] of Object.entries(p.prices)) {
+          const current = before?.prices.filter((x) => x.list === list).sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime())[0];
+          if (current?.unitPriceCents === cents) continue;
+          await tx.productPrice.create({ data: { administrationId: A, productId, list, unitPriceCents: cents } });
+        }
+      }
+      if (!created && !updated) throw new PostingError(t("products.import.err.nothing"));
+      await auditApp(ctx, "product.import", `Imported products from a spreadsheet: ${created} added, ${updated} updated, ${skipped} skipped`, { after: { created, updated, skipped } }, tx);
+      return { message: t("products.import.toast", { created, updated, skipped }) };
+    },
+    { timeout: 120_000 },
+  );
+}

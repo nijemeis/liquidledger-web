@@ -9,6 +9,7 @@ import { bandLabel, excisePerUnit, exciseFormula, ratesOn, rateFor } from "@/lib
 import { stockLevels, unitsIn } from "@/lib/domain/stock";
 import { countryName, flag, COUNTRY_CODES } from "@/lib/countries";
 import { ProductDrawer, type ProductView, type ProductEdit } from "./product-drawer";
+import { ImportProductsButton } from "./import-client";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -177,10 +178,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         title={t("products.title")}
         actions={
           canEdit ? (
-            <Link href={href({ new: "1", id: undefined, edit: undefined })} className="btn btn-primary" scroll={false}>
-              <Icon name="Plus" size={16} />
-              {t("products.newProduct")}
-            </Link>
+            <>
+              <ImportProductsButton existingSkus={d.products.map((p) => p.sku)} />
+              <Link href={href({ new: "1", id: undefined, edit: undefined })} className="btn btn-primary" scroll={false}>
+                <Icon name="Plus" size={16} />
+                {t("products.newProduct")}
+              </Link>
+            </>
           ) : null
         }
       />
