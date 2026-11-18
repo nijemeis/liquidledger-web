@@ -4,7 +4,7 @@ import { COUNTRY_CODES } from "@/lib/countries";
 
 // Products from a spreadsheet: pasted from Excel/Numbers/Google Sheets (tabs)
 // or a CSV file (semicolons or commas). The first row names the columns, in
-// English or Dutch; the order doesn't matter. Pure and client-safe, so the
+// any of the app's languages (en, nl, fr, de, it, es, pl); the order doesn't matter. Pure and client-safe, so the
 // preview in the browser and the import on the server use the same rules.
 
 export type ProductField =
@@ -30,37 +30,44 @@ export type ProductField =
 
 /** Header names per field, compared without case, accents, punctuation or spaces. */
 const HEADERS: Record<ProductField, string[]> = {
-  sku: ["sku", "artikelcode", "artikelnummer", "artikelnr", "code", "itemcode", "article", "articlenumber", "ref", "reference", "productcode"],
-  name: ["name", "naam", "productname", "productnaam", "product", "description", "omschrijving", "artikel"],
-  category: ["category", "categorie", "soort", "type", "productgroup", "productgroep", "group", "groep"],
-  volume: ["volume", "inhoud", "size", "content", "contents", "liters", "litres", "liter", "litre", "volumel", "volumeml", "ml", "cl", "inhoudl", "inhoudml", "inhoudcl"],
-  abv: ["abv", "alcohol", "alc", "alcvol", "alcoholpercentage", "alcohol%", "alcoholvol", "abv%", "alc%", "percentage"],
-  plato: ["plato", "p", "degreesplato", "gradenplato", "stamwortgehalte", "originalgravity", "gravity"],
-  sparkling: ["sparkling", "mousserend", "bubbles", "schuimwijn", "spumante"],
-  unitsPerCase: ["unitspercase", "bottlespercase", "percase", "case", "casesize", "doos", "perdoos", "flessenperdoos", "colli", "verpakking", "pack", "packsize"],
-  casesPerPallet: ["casesperpallet", "pallet", "perpallet", "dozenperpallet", "doosperpallet"],
-  cost: ["cost", "costprice", "kostprijs", "inkoopprijs", "purchaseprice", "landedcost", "inkoop"],
+  sku: ["sku", "artikelcode", "artikelnummer", "artikelnr", "code", "itemcode", "article", "articlenumber", "ref", "reference", "productcode", "reference", "codice", "codigo", "kod", "kodproduktu", "numer", "artikelnummer", "artnr", "codearticle", "codiceartikolo", "codigoarticulo"],
+  name: ["name", "naam", "productname", "productnaam", "product", "description", "omschrijving", "artikel", "nom", "nomduproduit", "nome", "nomeprodotto", "nombre", "nombredelproducto", "nazwa", "nazwaproduktu", "bezeichnung", "produktname", "designation", "denominazione"],
+  category: ["category", "categorie", "soort", "type", "productgroup", "productgroep", "group", "groep", "kategorie", "categoria", "kategoria", "famille", "warengruppe", "tipologia", "tipo"],
+  volume: ["volume", "inhoud", "size", "content", "contents", "liters", "litres", "liter", "litre", "volumel", "volumeml", "ml", "cl", "inhoudl", "inhoudml", "inhoudcl", "inhalt", "volumen", "contenance", "capacite", "contenuto", "capacidad", "pojemnosc", "objetosc", "formato", "format", "flaschengrosse"],
+  abv: ["abv", "alcohol", "alc", "alcvol", "alcoholpercentage", "alcohol%", "alcoholvol", "abv%", "alc%", "percentage", "alcool", "alcol", "alkohol", "alcool%", "alcol%", "alkohol%", "alkoholgehalt", "gradazione", "graduacion", "tauxdalcool", "degre", "volumenprozent"],
+  plato: ["plato", "p", "degreesplato", "gradenplato", "stamwortgehalte", "originalgravity", "gravity", "stammwurze", "gradiplato", "gradosplato", "stopnieplato"],
+  sparkling: ["sparkling", "mousserend", "bubbles", "schuimwijn", "spumante", "mousseux", "effervescent", "schaumwein", "espumoso", "musujace", "frizzante"],
+  unitsPerCase: ["unitspercase", "bottlespercase", "percase", "case", "casesize", "doos", "perdoos", "flessenperdoos", "colli", "verpakking", "pack", "packsize", "carton", "bouteillesparcarton", "parcarton", "karton", "flaschenprokarton", "prokarton", "cartone", "bottigliepercartone", "percartone", "caja", "botellasporcaja", "porcaja", "butelkiwkartonie", "wkartonie", "kolli"],
+  casesPerPallet: ["casesperpallet", "pallet", "perpallet", "dozenperpallet", "doosperpallet", "cartonsparpalette", "palette", "kartonsjepalette", "propalette", "cartonipallet", "cartoniperpallet", "cajasporpale", "pale", "kartonynapalecie", "paleta"],
+  cost: ["cost", "costprice", "kostprijs", "inkoopprijs", "purchaseprice", "landedcost", "inkoop", "prixderevient", "prixdachat", "coutdachat", "einstandspreis", "einkaufspreis", "costo", "prezzodiacquisto", "costodacquisto", "coste", "preciodecoste", "preciodecompra", "cenazakupu", "koszt", "kosztzakupu"],
   ean: ["ean", "barcode", "gtin", "ean13", "eancode"],
-  cnCode: ["cn", "cncode", "gncode", "hscode", "hs", "tariffcode", "goederencode", "douanecode", "taric"],
-  emcsCode: ["emcs", "emcscode", "excisecode", "accijnscode", "epc", "exciseproductcode"],
-  producer: ["producer", "producent", "brand", "merk", "winery", "distillery", "brewery", "brouwerij", "maker", "wijnhuis"],
-  region: ["region", "regio", "streek", "appellation", "area"],
-  originCountry: ["origin", "country", "land", "herkomst", "landvanherkomst", "countryoforigin", "origincountry"],
-  vintage: ["vintage", "oogstjaar", "jaar", "year", "jaargang", "age", "leeftijd"],
-  deposit: ["deposit", "statiegeld", "pfand"],
-  reorderLevel: ["reorder", "reorderlevel", "minimum", "minstock", "minimumvoorraad", "bestelniveau", "bestelpunt"],
+  cnCode: ["cn", "cncode", "gncode", "hscode", "hs", "tariffcode", "goederencode", "douanecode", "taric", "nc", "codenc", "codedouanier", "kn", "kncode", "zolltarifnummer", "codicenc", "codicedoganale", "codigonc", "codigoarancelario", "kodcn"],
+  emcsCode: ["emcs", "emcscode", "excisecode", "accijnscode", "epc", "exciseproductcode", "codeaccise", "verbrauchsteuercode", "codiceaccisa", "codigoimpuestoespecial", "kodakcyzowy"],
+  producer: ["producer", "producent", "brand", "merk", "winery", "distillery", "brewery", "brouwerij", "maker", "wijnhuis", "producteur", "domaine", "erzeuger", "hersteller", "weingut", "produttore", "cantina", "productor", "bodega", "producent"],
+  region: ["region", "regio", "streek", "appellation", "area", "regione", "regionen", "anbaugebiet", "denominacion", "denominazionedorigine"],
+  originCountry: ["origin", "country", "land", "herkomst", "landvanherkomst", "countryoforigin", "origincountry", "origine", "paysdorigine", "pays", "herkunft", "herkunftsland", "paese", "paesedorigine", "pais", "paisdeorigen", "origen", "kraj", "krajpochodzenia", "pochodzenie"],
+  vintage: ["vintage", "oogstjaar", "jaar", "year", "jaargang", "age", "leeftijd", "millesime", "annee", "jahrgang", "annata", "anada", "cosecha", "rocznik"],
+  deposit: ["deposit", "statiegeld", "pfand", "consigne", "cauzione", "vuoto", "deposito", "envase", "kaucja"],
+  reorderLevel: ["reorder", "reorderlevel", "minimum", "minstock", "minimumvoorraad", "bestelniveau", "bestelpunt", "seuil", "seuildereapprovisionnement", "meldebestand", "mindestbestand", "puntodiriordino", "scortaminima", "puntodereposicion", "stockminimo", "minimalnystan", "stanminimalny"],
 };
 
 /** Price list named by a header ("Price Horeca", "Prijs groothandel", "Export", or just "Price" = Horeca). */
 function priceListOf(k: string): string | null {
-  if (/horeca|restaurant|hotel/.test(k)) return "Horeca";
-  if (/wholesale|groothandel|grossier/.test(k)) return "Wholesale";
-  if (/export/.test(k)) return "Export";
-  if (/^(price|prijs|verkoopprijs|salesprice|sellingprice|listprice|adviesprijs)$/.test(k)) return "Horeca";
+  if (/horeca|restaurant|hotel|gastronomie|hostelerie/.test(k)) return "Horeca";
+  if (/wholesale|groothandel|grossier|grossiste|grosshandel|ingrosso|mayorista|hurt/.test(k)) return "Wholesale";
+  if (/export|eksport/.test(k)) return "Export";
+  if (/^(price|prijs|verkoopprijs|salesprice|sellingprice|listprice|adviesprijs|prix|prixdevente|preis|verkaufspreis|prezzo|prezzodivendita|precio|preciodeventa|cena|cenasprzedazy)$/.test(k)) return "Horeca";
   return null;
 }
 
 const CATEGORY_WORDS: [RegExp, ProductCategory][] = [
+  [/^(vin|vins|wein|weine|vino|vini|vinos|wino|wina)( (rouge|blanc|rose|rosé|rot|weiss|weiß|rosso|bianco|tinto|blanco|czerwone|biale|białe))?$/, "WINE"],
+  [/mousseux|effervescent|schaumwein|sekt|spumante|frizzante|espumoso|musujace|musujące/, "WINE"],
+  [/vin de liqueur|vin muté|likörwein|likorwein|vino liquoroso|vino generoso|vino fortificado|wino wzmacniane/, "FORTIFIED"],
+  [/^(bière|biere|bieres|bières|birra|birre|cerveza|cervezas|piwo|piwa)$/, "BEER"],
+  [/spiritueux|spirituosen|superalcolic|distillat|destilado|liqueur|likör|liquore|licor|wódka|wodka|wodka|mocny alkohol/, "SPIRITS"],
+  [/^(eau|eau minérale|eau minerale|wasser|mineralwasser|acqua|acqua minerale|agua|agua mineral|woda|woda mineralna)$/, "WATER"],
+  [/boisson|softdrink|limonade|bibit|bevanda analcolica|refresco|napój|napoj|sok|jus|saft|succo|zumo/, "SOFT"],
   [/^(wine|wijn|vin|wein|vino|wina|wines|wijnen|red|white|rose|rood|wit|rosé|still wine)$/, "WINE"],
   [/sparkling|mousserend|champagne|cava|prosecco|cremant|crémant|schuimwijn/, "WINE"],
   [/fortified|versterkt|port|porto|sherry|madeira|marsala|vermout|vermouth|tussenproduct|intermediate|likeurwijn/, "FORTIFIED"],
@@ -123,6 +130,8 @@ export interface ParsedSheet {
 const key = (s: string) =>
   s
     .toLowerCase()
+    .replace(/ß/g, "ss")
+    .replace(/ł/g, "l")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9%]/g, "");
@@ -199,7 +208,8 @@ export function countryOf(raw: string): string | null {
 
 /** Volume to ml: "0,75" and "0.75 L" are litres, "750" and "750 ml" are ml, "75 cl" centilitres. */
 function volumeMl(raw: string, header: string): number | null {
-  const unit = /ml\b|ml$/i.test(raw) || /ml$/.test(header) ? "ml" : /cl\b|cl$/i.test(raw) || /cl$/.test(header) ? "cl" : null;
+  // The unit comes from the cell ("75 cl") or from the header's own words ("Volume (ml)", "Inhoud cl").
+  const unit = /ml\b|ml$/i.test(raw) || /\bml\b/i.test(header) ? "ml" : /cl\b|cl$/i.test(raw) || /\bcl\b/i.test(header) ? "cl" : null;
   const n = decimal(raw.replace(/(ml|cl|ltr|lt|l)\.?$/i, ""));
   if (n === null || Number.isNaN(n) || n <= 0) return n === null ? null : NaN;
   if (unit === "ml") return Math.round(n);
@@ -220,7 +230,9 @@ export function parseProductSheet(text: string): ParsedSheet {
   header.forEach((h, i) => {
     const k = key(h);
     if (!k) return;
-    const field = (Object.keys(HEADERS) as ProductField[]).find((f) => HEADERS[f].includes(k) && ![...fieldAt.values()].includes(f));
+    // "Inhalt (L)", "Pojemność (ml)", "Alcool %": also try the name without its unit.
+    const tries = [k, ...["ml", "cl", "liters", "litres", "liter", "litre", "ltr", "l", "%"].filter((u) => k.endsWith(u)).map((u) => k.slice(0, -u.length))].filter(Boolean);
+    const field = (Object.keys(HEADERS) as ProductField[]).find((f) => tries.some((x) => HEADERS[f].includes(x)) && ![...fieldAt.values()].includes(f));
     if (field) return void fieldAt.set(i, field);
     const list = priceListOf(k);
     if (list && ![...listAt.values()].includes(list)) return void listAt.set(i, list);
@@ -241,7 +253,6 @@ export function parseProductSheet(text: string): ParsedSheet {
     for (const [i, field] of fieldAt) {
       const raw = (cells[i] ?? "").trim();
       if (!raw) continue;
-      const head = key(header[i] ?? "");
       const int = (min: number, max: number) => {
         const n = decimal(raw);
         if (n === null) return null;
@@ -266,7 +277,7 @@ export function parseProductSheet(text: string): ParsedSheet {
           break;
         }
         case "volume": {
-          const ml = volumeMl(raw, head);
+          const ml = volumeMl(raw, header[i] ?? "");
           if (ml === null) break;
           if (Number.isNaN(ml) || ml <= 0 || ml > 1_000_000) issues.push({ code: "volume", value: raw });
           else product.volumeMl = ml;

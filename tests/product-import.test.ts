@@ -52,3 +52,35 @@ describe("product import from a spreadsheet", () => {
     expect(countryOf("de")).toBe("DE");
   });
 });
+
+describe("product import in every interface language", () => {
+  it("recognises the example columns shown on the import screen in each language", async () => {
+    const messages = (await import("@/i18n/messages/products")).default as unknown as Record<string, { import: { placeholder: string } }>;
+    for (const [lang, m] of Object.entries(messages)) {
+      const r = parseProductSheet(m.import.placeholder);
+      expect([lang, r.ignored, r.missing]).toEqual([lang, [], []]);
+      expect([lang, r.rows[0]!.issues]).toEqual([lang, []]);
+      expect([lang, r.rows[0]!.product]).toMatchObject([lang, { sku: "WN-1021", category: "WINE", volumeMl: 750, abvBp: 1350, prices: { Horeca: 980 } }]);
+    }
+  });
+
+  it("reads French, German, Italian, Spanish and Polish headers and categories", () => {
+    const sheets = [
+      "Référence;Nom;Catégorie;Contenance (L);Alcool %;Prix de revient;Prix grossiste;Pays d'origine\nA1;Pisco;Spiritueux;0,7;40;14,20;21,00;Pérou",
+      "Artikelnummer;Bezeichnung;Kategorie;Inhalt (L);Alkohol %;Einstandspreis;Großhandel;Herkunftsland\nA1;Pisco;Spirituosen;0,7;40;14,20;21,00;Peru",
+      "Codice;Nome;Categoria;Contenuto (L);Alcol %;Costo;Ingrosso;Paese d'origine\nA1;Pisco;Superalcolici;0,7;40;14,20;21,00;Perù",
+      "Código;Nombre;Categoría;Capacidad (L);Alcohol %;Precio de coste;Mayorista;País de origen\nA1;Pisco;Destilados;0,7;40;14,20;21,00;Perú",
+      "Kod;Nazwa;Kategoria;Pojemność (L);Alkohol %;Cena zakupu;Hurt;Kraj pochodzenia\nA1;Pisco;Mocny alkohol;0,7;40;14,20;21,00;Peru",
+    ];
+    for (const sh of sheets) {
+      const r = parseProductSheet(sh);
+      expect([sh.slice(0, 12), r.ignored, r.rows[0]!.issues]).toEqual([sh.slice(0, 12), [], []]);
+      expect(r.rows[0]!.product).toMatchObject({ sku: "A1", name: "Pisco", category: "SPIRITS", volumeMl: 700, abvBp: 4000, costCents: 1420, originCountry: "PE", prices: { Wholesale: 2100 } });
+    }
+    expect(categoryOf("Vin rouge")).toBe("WINE");
+    expect(categoryOf("Bière")).toBe("BEER");
+    expect(categoryOf("Eau")).toBe("WATER");
+    expect(categoryOf("Bibite")).toBe("SOFT");
+    expect(categoryOf("Vino generoso")).toBe("FORTIFIED");
+  });
+});

@@ -96,7 +96,7 @@ export default ns({
     import: {
       button: "Import from spreadsheet",
       title: "Import products from a spreadsheet",
-      text: "Copy the rows from Excel, Numbers or Google Sheets (including the header row) and paste them here, or choose a CSV file. Column names can be in English or Dutch and in any order; only SKU and name are required (plus category and volume for new products). Existing SKUs are updated with the columns you fill in.",
+      text: "Copy the rows from Excel, Numbers or Google Sheets (including the header row) and paste them here, or choose a CSV file. Column names can be in any of Liquid Ledger’s languages and in any order; only SKU and name are required (plus category and volume for new products). Existing SKUs are updated with the columns you fill in.",
       chooseFile: "Choose a CSV file",
       template: "Download a template",
       placeholder: "SKU\tName\tCategory\tVolume (L)\tABV %\tPrice Horeca\nWN-1021\tAltamira Rioja Crianza 2021\tWine\t0,75\t13,5\t9,80",
@@ -231,7 +231,7 @@ export default ns({
     import: {
       button: "Importeren uit spreadsheet",
       title: "Producten importeren uit een spreadsheet",
-      text: "Kopieer de regels uit Excel, Numbers of Google Sheets (inclusief de kopregel) en plak ze hier, of kies een CSV-bestand. Kolomnamen mogen Nederlands of Engels zijn en in elke volgorde staan; alleen artikelcode en naam zijn verplicht (plus categorie en inhoud voor nieuwe producten). Bestaande artikelcodes worden bijgewerkt met de kolommen die je invult.",
+      text: "Kopieer de regels uit Excel, Numbers of Google Sheets (inclusief de kopregel) en plak ze hier, of kies een CSV-bestand. Kolomnamen mogen in elke taal van Liquid Ledger en in elke volgorde staan; alleen artikelcode en naam zijn verplicht (plus categorie en inhoud voor nieuwe producten). Bestaande artikelcodes worden bijgewerkt met de kolommen die je invult.",
       chooseFile: "Kies een CSV-bestand",
       template: "Download een sjabloon",
       placeholder: "Artikelcode\tNaam\tCategorie\tInhoud (L)\tAlcohol %\tPrijs horeca\nWN-1021\tAltamira Rioja Crianza 2021\tWijn\t0,75\t13,5\t9,80",
@@ -366,7 +366,7 @@ export default ns({
     import: {
       button: "Importer depuis un tableur",
       title: "Importer des produits depuis un tableur",
-      text: "Copiez les lignes depuis Excel, Numbers ou Google Sheets (ligne d’en-tête comprise) et collez-les ici, ou choisissez un fichier CSV. Les noms de colonnes peuvent être en anglais ou en néerlandais et dans n’importe quel ordre ; seuls le SKU et le nom sont obligatoires (ainsi que la catégorie et le volume pour les nouveaux produits). Les SKU existants sont mis à jour avec les colonnes que vous remplissez.",
+      text: "Copiez les lignes depuis Excel, Numbers ou Google Sheets (ligne d’en-tête comprise) et collez-les ici, ou choisissez un fichier CSV. Les noms de colonnes peuvent être dans n’importe quelle langue de Liquid Ledger et dans n’importe quel ordre ; seuls le SKU et le nom sont obligatoires (ainsi que la catégorie et le volume pour les nouveaux produits). Les SKU existants sont mis à jour avec les colonnes que vous remplissez.",
       chooseFile: "Choisir un fichier CSV",
       template: "Télécharger un modèle",
       placeholder: "SKU\tNom\tCatégorie\tVolume (L)\tAlcool %\tPrix Horeca\nWN-1021\tAltamira Rioja Crianza 2021\tVin\t0,75\t13,5\t9,80",
@@ -501,7 +501,7 @@ export default ns({
     import: {
       button: "Aus Tabelle importieren",
       title: "Produkte aus einer Tabelle importieren",
-      text: "Kopieren Sie die Zeilen aus Excel, Numbers oder Google Sheets (einschließlich der Kopfzeile) und fügen Sie sie hier ein, oder wählen Sie eine CSV-Datei. Spaltennamen können auf Englisch oder Niederländisch sein und in beliebiger Reihenfolge stehen; nur SKU und Name sind Pflicht (bei neuen Produkten auch Kategorie und Volumen). Vorhandene SKUs werden mit den Spalten aktualisiert, die Sie ausfüllen.",
+      text: "Kopieren Sie die Zeilen aus Excel, Numbers oder Google Sheets (einschließlich der Kopfzeile) und fügen Sie sie hier ein, oder wählen Sie eine CSV-Datei. Spaltennamen können in jeder Sprache von Liquid Ledger und in beliebiger Reihenfolge stehen; nur SKU und Name sind Pflicht (bei neuen Produkten auch Kategorie und Volumen). Vorhandene SKUs werden mit den Spalten aktualisiert, die Sie ausfüllen.",
       chooseFile: "CSV-Datei auswählen",
       template: "Vorlage herunterladen",
       placeholder: "SKU\tName\tKategorie\tVolumen (L)\tAlkohol %\tPreis Horeca\nWN-1021\tAltamira Rioja Crianza 2021\tWein\t0,75\t13,5\t9,80",
@@ -636,7 +636,7 @@ export default ns({
     import: {
       button: "Importa da foglio di calcolo",
       title: "Importa prodotti da un foglio di calcolo",
-      text: "Copia le righe da Excel, Numbers o Google Sheets (compresa la riga di intestazione) e incollale qui, oppure scegli un file CSV. I nomi delle colonne possono essere in inglese o in olandese e in qualsiasi ordine; sono obbligatori solo SKU e nome (più categoria e volume per i nuovi prodotti). Gli SKU esistenti vengono aggiornati con le colonne che compili.",
+      text: "Copia le righe da Excel, Numbers o Google Sheets (compresa la riga di intestazione) e incollale qui, oppure scegli un file CSV. I nomi delle colonne possono essere in qualsiasi lingua di Liquid Ledger e in qualsiasi ordine; sono obbligatori solo SKU e nome (più categoria e volume per i nuovi prodotti). Gli SKU esistenti vengono aggiornati con le colonne che compili.",
       chooseFile: "Scegli un file CSV",
       template: "Scarica un modello",
       placeholder: "SKU\tNome\tCategoria\tVolume (L)\tAlcol %\tPrezzo Horeca\nWN-1021\tAltamira Rioja Crianza 2021\tVino\t0,75\t13,5\t9,80",
@@ -771,7 +771,7 @@ export default ns({
     import: {
       button: "Importar desde hoja de cálculo",
       title: "Importar productos desde una hoja de cálculo",
-      text: "Copia las filas de Excel, Numbers o Google Sheets (incluida la fila de encabezado) y pégalas aquí, o elige un archivo CSV. Los nombres de columna pueden estar en inglés o en neerlandés y en cualquier orden; solo el SKU y el nombre son obligatorios (más la categoría y el volumen para productos nuevos). Los SKU existentes se actualizan con las columnas que rellenes.",
+      text: "Copia las filas de Excel, Numbers o Google Sheets (incluida la fila de encabezado) y pégalas aquí, o elige un archivo CSV. Los nombres de columna pueden estar en cualquier idioma de Liquid Ledger y en cualquier orden; solo el SKU y el nombre son obligatorios (más la categoría y el volumen para productos nuevos). Los SKU existentes se actualizan con las columnas que rellenes.",
       chooseFile: "Elegir un archivo CSV",
       template: "Descargar una plantilla",
       placeholder: "SKU\tNombre\tCategoría\tVolumen (L)\tAlcohol %\tPrecio Horeca\nWN-1021\tAltamira Rioja Crianza 2021\tVino\t0,75\t13,5\t9,80",
@@ -906,7 +906,7 @@ export default ns({
     import: {
       button: "Importuj z arkusza",
       title: "Importuj produkty z arkusza kalkulacyjnego",
-      text: "Skopiuj wiersze z programów Excel, Numbers lub Google Sheets (razem z wierszem nagłówka) i wklej je tutaj albo wybierz plik CSV. Nazwy kolumn mogą być po angielsku lub po niderlandzku, w dowolnej kolejności; wymagane są tylko SKU i nazwa (a dla nowych produktów także kategoria i pojemność). Istniejące SKU są aktualizowane danymi z wypełnionych kolumn.",
+      text: "Skopiuj wiersze z programów Excel, Numbers lub Google Sheets (razem z wierszem nagłówka) i wklej je tutaj albo wybierz plik CSV. Nazwy kolumn mogą być w dowolnym języku Liquid Ledger i w dowolnej kolejności; wymagane są tylko SKU i nazwa (a dla nowych produktów także kategoria i pojemność). Istniejące SKU są aktualizowane danymi z wypełnionych kolumn.",
       chooseFile: "Wybierz plik CSV",
       template: "Pobierz szablon",
       placeholder: "SKU\tNazwa\tKategoria\tPojemność (L)\tAlkohol %\tCena Horeca\nWN-1021\tAltamira Rioja Crianza 2021\tWino\t0,75\t13,5\t9,80",
