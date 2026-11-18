@@ -1,7 +1,15 @@
 # Deploying Liquid Ledger to Coolify (self-hosted)
 
-App built from the repo's **Dockerfile**, PostgreSQL running **on the same Coolify server**, two domains on one app:
-`liquidledger.net` (customer app) and `admin.liquidledger.net` (platform admin console — only served there).
+App built from the repo's **Dockerfile**, PostgreSQL running **on the same Coolify server**, two hostnames on one app:
+
+| | For now | Later |
+|---|---|---|
+| Customer app | `liquidledger.spiderintheweb.nl` | `liquidledger.net` |
+| Admin console (only served there) | `liquidledger-admin.spiderintheweb.nl` | `admin.liquidledger.net` |
+
+The admin host is a sibling (`liquidledger-admin.…`), not `admin.liquidledger.…`, so a wildcard record for
+`*.spiderintheweb.nl` covers both (wildcards only reach one level). Moving to `liquidledger.net` later is a
+change of domains and environment variables only — see the end of this document.
 
 Steps marked **YOU** happen in the Coolify UI or your DNS (I can't reach your server).
 
@@ -37,8 +45,8 @@ Steps marked **YOU** happen in the Coolify UI or your DNS (I can't reach your se
 
 - **Build Pack: Dockerfile** (repo root, no base directory).
 - **Ports Exposes: `8080`**.
-- **Domains:** `https://liquidledger.net,https://admin.liquidledger.net` (comma-separated; Coolify gets
-  Let's Encrypt certificates for both).
+- **Domains:** `https://liquidledger.spiderintheweb.nl,https://liquidledger-admin.spiderintheweb.nl`
+  (comma-separated; Coolify gets Let's Encrypt certificates for both).
 - **Health check:** path `/api/health`, port `8080`. It touches the database, so a deploy that can't reach
   Postgres stays unhealthy instead of serving errors.
 - **No pre-deployment command needed:** the container runs `prisma migrate deploy` itself on start. It only
@@ -55,14 +63,14 @@ Steps marked **YOU** happen in the Coolify UI or your DNS (I can't reach your se
 | `DATABASE_URL` | `postgresql://liquidledger:<password>@<db-internal-host>:5432/liquidledger?connection_limit=10` |
 | `DIRECT_URL` | the same URL without `?connection_limit…` (no pooler here; migrations use it) |
 | `APP_ENCRYPTION_KEY` | `openssl rand -base64 32` — **secret**. Encrypts users' authenticator secrets. Keep a copy in your password manager: losing or changing it means every user must set up 2FA again. |
-| `APP_URL` | `https://liquidledger.net` |
-| `ADMIN_URL` | `https://admin.liquidledger.net/admin` |
-| `ADMIN_HOST` | `admin.liquidledger.net` (the admin console is only served on this host) |
-| `WEBAUTHN_RP_ID` | `liquidledger.net` (passkeys work on the domain and its subdomains) |
-| `WEBAUTHN_ORIGINS` | `https://liquidledger.net,https://admin.liquidledger.net` |
+| `APP_URL` | `https://liquidledger.spiderintheweb.nl` |
+| `ADMIN_URL` | `https://liquidledger-admin.spiderintheweb.nl/admin` |
+| `ADMIN_HOST` | `liquidledger-admin.spiderintheweb.nl` (the admin console is only served on this host) |
+| `WEBAUTHN_RP_ID` | `spiderintheweb.nl` — passkeys must belong to a domain both hosts share |
+| `WEBAUTHN_ORIGINS` | `https://liquidledger.spiderintheweb.nl,https://liquidledger-admin.spiderintheweb.nl` |
 | `TRUSTED_IP_HEADER` | `x-real-ip` (set by Coolify's Traefik; used for rate limits and sign-in alerts). Behind Cloudflare's proxy use `cf-connecting-ip`. |
 | `SMTP_URL` | **secret**, e.g. `smtps://user:pass@smtp.postmarkapp.com:465`. Required for invitations, trial sign-ups, password resets and new-device alerts — without it those mails are only written to the log. |
-| `MAIL_FROM` | `Liquid Ledger <no-reply@liquidledger.net>` (set SPF/DKIM for the domain at your mail provider) |
+| `MAIL_FROM` | e.g. `Liquid Ledger <no-reply@spiderintheweb.nl>` — an address your SMTP provider may send from (SPF/DKIM set up for that domain) |
 | `ANTHROPIC_API_KEY` | optional, **secret** — reading uploaded purchase invoices |
 | `S3_BUCKET`, `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | optional — uploaded documents go to object storage; without them they're stored in Postgres (fine to start with, and covered by the database backup) |
 
@@ -73,8 +81,9 @@ Never set `ALLOW_RLS_BYPASS_ROLE` — it exists only to override the startup saf
 
 ## 4. DNS — YOU
 
-Point **A** (and AAAA if you use IPv6) records for `liquidledger.net` and `admin.liquidledger.net` at the Coolify
-server, then deploy so Coolify can obtain the certificates. If you proxy through Cloudflare, use SSL mode
+Point **A** (and AAAA if you use IPv6) records for `liquidledger.spiderintheweb.nl` and
+`liquidledger-admin.spiderintheweb.nl` at the Coolify server (nothing to do if `*.spiderintheweb.nl` already
+points there), then deploy so Coolify can obtain the certificates. If you proxy through Cloudflare, use SSL mode
 **Full (strict)** and set `TRUSTED_IP_HEADER=cf-connecting-ip`.
 
 ---
@@ -85,9 +94,9 @@ Deploy and watch the log: `[start] applying database migrations` → `All migrat
 applied` → `Ready`. Then:
 
 ```bash
-curl -s https://liquidledger.net/api/health                     # {"ok":true}
-curl -s -o /dev/null -w "%{http_code}\n" https://liquidledger.net/login               # 200
-curl -s -o /dev/null -w "%{http_code}\n" https://admin.liquidledger.net/admin/login   # 200
+curl -s https://liquidledger.spiderintheweb.nl/api/health                                  # {"ok":true}
+curl -s -o /dev/null -w "%{http_code}\n" https://liquidledger.spiderintheweb.nl/login                 # 200
+curl -s -o /dev/null -w "%{http_code}\n" https://liquidledger-admin.spiderintheweb.nl/admin/login     # 200
 ```
 
 If the log says *"The database role can bypass row-level security … Refusing to start"*, `DATABASE_URL` uses
@@ -100,7 +109,7 @@ the superuser — switch it to the `liquidledger` role from step 1.
 Production starts empty. Open the app's **Terminal** in Coolify and run:
 
 ```bash
-node scripts/create-staff.mjs --email you@liquidledger.net --name "Your Name"
+node scripts/create-staff.mjs --email you@example.com --name "Your Name"
 ```
 
 It prints a one-time set-up link (valid 48 hours). Open it, choose a password and register a passkey
@@ -131,3 +140,18 @@ Never run the demo seed against this database — it wipes everything (and refus
 - **Updating:** push to `main` → Coolify builds → the new container migrates and starts → the health check
   passes → traffic switches. Journal entries are immutable and migrations only add, so rolling back the app
   image is safe as long as no migration removed something it needs.
+
+---
+
+## Moving to liquidledger.net later
+
+1. Add `https://liquidledger.net,https://admin.liquidledger.net` to the app's domains (keep the old ones for a
+   while so links in sent emails keep working) and point DNS at the server.
+2. Change `APP_URL`, `ADMIN_URL`, `ADMIN_HOST`, `WEBAUTHN_RP_ID` (`liquidledger.net`), `WEBAUTHN_ORIGINS` and
+   `MAIL_FROM`, and redeploy.
+3. **Passkeys are tied to their domain:** passkeys registered under `spiderintheweb.nl` don't work on
+   `liquidledger.net`. Staff get a fresh set-up link with `node scripts/create-staff.mjs --email …` and register
+   a new passkey; client users sign in with their authenticator app or a recovery code and can add a passkey
+   again. Authenticator-app codes don't depend on the domain and keep working.
+4. Sessions are per host, so everyone signs in again once.
+
