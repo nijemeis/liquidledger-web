@@ -15,7 +15,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx --env-file=.env prisma/seed.ts",
-    "staff:create": "tsx --env-file=.env scripts/create-staff.ts",
+    "staff:create": "node --env-file=.env scripts/create-staff.mjs",
     "setup": "node scripts/setup.mjs",
     "dev:code": "tsx --env-file=.env scripts/dev-code.ts"
   },

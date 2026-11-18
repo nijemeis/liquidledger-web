@@ -25,6 +25,7 @@ services:
     health_check:
       http_path: /api/health
     envs:
+      - { key: MIGRATE_ON_START, value: "0" }   # the pre-deploy job below migrates
       - { key: APP_URL, value: "https://liquidledger.net" }
       - { key: ADMIN_URL, value: "https://admin.liquidledger.net/admin" }
       - { key: ADMIN_HOST, value: "admin.liquidledger.net" }
@@ -56,7 +57,7 @@ jobs:
       branch: main
     dockerfile_path: Dockerfile
     instance_size_slug: apps-s-1vcpu-1gb
-    run_command: npx prisma migrate deploy
+    run_command: node /opt/prisma-cli/node_modules/prisma/build/index.js migrate deploy
     envs:
       - { key: DATABASE_URL, scope: RUN_TIME, type: SECRET, value: "" }
       - { key: DIRECT_URL, scope: RUN_TIME, type: SECRET, value: "" }

@@ -119,6 +119,12 @@ window running `npm run dev`, so copy links from there.
   attempts the account locks for 15 minutes (`npm run db:seed` resets everything).
 - **Port 3000 in use** — `npm run dev -- -p 3001` and open http://localhost:3001.
 
+## Deploy on Coolify (self-hosted)
+
+The [Coolify runbook](docs/deploy-coolify.md) walks through it: Dockerfile build, Postgres on the same server
+with a dedicated non-superuser role (`docker/coolify-db.sql`), environment variables, both domains, and the
+first admin. The container applies pending migrations itself on start.
+
 ## Deploy (DigitalOcean App Platform, Frankfurt)
 
 `.do/app.yaml` describes the app: two web instances (stateless — sessions live in Postgres), a pre-deploy
@@ -133,7 +139,7 @@ migration job, a managed PostgreSQL 16 cluster in `fra1`, and the domains `liqui
    means every user must set up their authenticator app again), `SMTP_URL`, optionally `ANTHROPIC_API_KEY`
    (document reading), `S3_*` (Spaces for documents) and `TWILIO_*` (SMS fallback).
 3. Point the DNS records of both domains at the app.
-4. Create the first staff member: `npm run staff:create -- --email you@liquidledger.net --name "Your Name" --role SUPER_ADMIN`
+4. Create the first staff member: `node scripts/create-staff.mjs --email you@liquidledger.net --name "Your Name"`
    (run in the App Platform console), open the printed set-up link and register your passkey.
 5. Add your own company as a client from the admin console, or sign up for a trial.
 
